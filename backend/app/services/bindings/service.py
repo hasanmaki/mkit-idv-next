@@ -9,6 +9,7 @@ from app.core.log_config import get_logger
 from app.models.accounts import Accounts
 from app.models.bindings import Bindings
 from app.models.servers import Servers
+from app.models.statuses import AccountStatus
 from app.models.steps import BindingStep
 from app.repos.account_repo import AccountRepository
 from app.repos.binding_repo import BindingRepository
@@ -74,6 +75,13 @@ class BindingService:
             balance_start=data.balance_start,
             balance_last=data.balance_start,
         )
+        await self.accounts.update(
+            self.session,
+            account,
+            status=AccountStatus.ACTIVE,
+            used_count=account.used_count + 1,
+            last_used_at=datetime.utcnow(),
+        )
 
         logger.info(
             "Binding created",
@@ -127,6 +135,14 @@ class BindingService:
             unbound_at=datetime.utcnow(),
             **data.model_dump(exclude_unset=True),
         )
+        account = await self.accounts.get(self.session, binding.account_id)
+        if account:
+            new_status = (
+                data.account_status
+                if data.account_status is not None
+                else AccountStatus.EXHAUSTED
+            )
+            await self.accounts.update(self.session, account, status=new_status)
         logger.info("Binding logged out", extra={"binding_id": binding_id})
         return updated
 

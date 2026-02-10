@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.statuses import AccountStatus
 from app.models.steps import BindingStep
 
 
@@ -32,6 +33,7 @@ class BindingLogout(BaseModel):
 
     last_error_code: str | None = None
     last_error_message: str | None = None
+    account_status: AccountStatus | None = None
 
 
 class BindingRead(BaseModel):
