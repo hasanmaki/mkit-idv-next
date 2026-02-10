@@ -122,22 +122,22 @@ class AccountCreateBulk(BaseModel):
 class AccountRead(BaseModel):
     """Schema returned by read endpoints for an account."""
 
-    id: int = Field(..., description="Primary key of the account")
-    msisdn: str
-    email: str
-    batch_id: str
+    id: int = Field(..., description="Primary key of the account", examples=[100])
+    msisdn: str = Field(..., examples=["085777076575"])
+    email: str = Field(..., examples=["user@example.com"])
+    batch_id: str = Field(..., examples=["batch-2026-02-10"])
     pin: str | None = Field(
         None, description="PIN for the account (included per project choice)"
     )
-    status: AccountStatus
-    is_reseller: bool = False
-    balance_last: int | None = None
-    used_count: int = 0
-    last_used_at: datetime | None = None
-    last_device_id: str | None = None
-    notes: str | None = None
-    created_at: datetime
-    updated_at: datetime
+    status: AccountStatus = Field(..., examples=[AccountStatus.ACTIVE])
+    is_reseller: bool = Field(False, examples=[True])
+    balance_last: int | None = Field(None, examples=[7851])
+    used_count: int = Field(0, examples=[3])
+    last_used_at: datetime | None = Field(None, examples=["2026-02-10T19:29:04.984Z"])
+    last_device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
+    notes: str | None = Field(None, examples=["myim3 #1"])
+    created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 
     model_config = {
         "coerce_numbers_to_str": True,

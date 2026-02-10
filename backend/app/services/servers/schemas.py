@@ -104,22 +104,18 @@ class ServerUpdate(BaseModel):
 class ServerResponse(BaseModel):
     """Schema for server response."""
 
-    id: int
-    port: int
-    base_url: str
-    description: str | None
-    timeout: int
-    retries: int
-    wait_between_retries: int
-    max_requests_queued: int
-    is_active: bool
-    notes: str | None
-    device_id: str | None
-    created_at: datetime
-    updated_at: datetime
+    id: int = Field(..., examples=[1])
+    port: int = Field(..., examples=[9900])
+    base_url: str = Field(..., examples=["http://localhost:9900"])
+    description: str | None = Field(None, examples=["myim3 Bot #1"])
+    timeout: int = Field(..., examples=[10])
+    retries: int = Field(..., examples=[3])
+    wait_between_retries: int = Field(..., examples=[1])
+    max_requests_queued: int = Field(..., examples=[5])
+    is_active: bool = Field(..., examples=[True])
+    notes: str | None = Field(None, examples=["server pool A"])
+    device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
+    created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 
     model_config = {"from_attributes": True, "use_enum_values": True}
-
-    model_config = {
-        "from_attributes": True,
-    }

@@ -59,22 +59,22 @@ class BindingVerifyLogin(BaseModel):
 class BindingRead(BaseModel):
     """Binding read schema."""
 
-    id: int
-    server_id: int
-    account_id: int
-    batch_id: str
-    step: BindingStep
-    is_reseller: bool
-    balance_start: int | None
-    balance_last: int | None
-    last_error_code: str | None
-    last_error_message: str | None
-    token_login: str | None
-    token_location: str | None
-    device_id: str | None
-    bound_at: datetime
-    unbound_at: datetime | None
-    created_at: datetime
-    updated_at: datetime
+    id: int = Field(..., examples=[1])
+    server_id: int = Field(..., examples=[1])
+    account_id: int = Field(..., examples=[100])
+    batch_id: str = Field(..., examples=["batch-2026-02-10"])
+    step: BindingStep = Field(..., examples=[BindingStep.OTP_VERIFIED])
+    is_reseller: bool = Field(..., examples=[True])
+    balance_start: int | None = Field(None, examples=[7851])
+    balance_last: int | None = Field(None, examples=[7500])
+    last_error_code: str | None = Field(None, examples=["otp_failed"])
+    last_error_message: str | None = Field(None, examples=["Invalid OTP"])
+    token_login: str | None = Field(None, examples=["eyJhbGciOiJIUzUxMiJ9..."])
+    token_location: str | None = Field(None, examples=["eyJ0eXAiOiJKV1QiLCJhb..."])
+    device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
+    bound_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    unbound_at: datetime | None = Field(None, examples=["2026-02-10T20:00:00.000Z"])
+    created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 
     model_config = {"from_attributes": True, "use_enum_values": True}
