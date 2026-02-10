@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import route_servers  # , bindings
+from app.api import route_accounts, route_servers  # , bindings
 from app.core.exceptions.handlers import register_exception_handlers
 from app.core.log_config import configure_logging
 from app.core.middlewares import RequestLoggingMiddleware, TraceIDMiddleware
@@ -48,6 +48,7 @@ app.add_middleware(TraceIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(route_servers.router, tags=["servers"], prefix="/v1/servers")
+app.include_router(route_accounts.router, tags=["accounts"], prefix="/v1/accounts")
 # app.include_router(bindings.router, prefix="/v1/bindings")
 
 # Register exception handlers setelah middleware
