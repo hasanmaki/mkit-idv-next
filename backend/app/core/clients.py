@@ -96,7 +96,6 @@ class BaseHTTPClient:
                 "status_code": response.status_code,
             }
             self.logger.info("HTTP_REQUEST_SUCCESS", extra=success_extra)
-            return response
 
         except httpx.HTTPStatusError as e:
             error_extra = {
@@ -146,6 +145,7 @@ class BaseHTTPClient:
                 context=error_extra,
                 original_exception=e,
             ) from e
+        return response
 
     async def request_json(
         self,
