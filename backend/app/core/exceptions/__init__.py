@@ -3,7 +3,7 @@ from app.core.exceptions.base import (
     AppValidationError,
     AppNotFoundError,
     AppExternalServiceError,
-    AppExternalServiceTimeout,
+    AppExternalServiceTimeoutError,
 )
 
 __all__ = [
@@ -11,5 +11,5 @@ __all__ = [
     "AppValidationError",
     "AppNotFoundError",
     "AppExternalServiceError",
-    "AppExternalServiceTimeout",
+    "AppExternalServiceTimeoutError",
 ]

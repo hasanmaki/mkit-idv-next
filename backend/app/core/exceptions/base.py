@@ -108,7 +108,7 @@ class AppExternalServiceError(AppBaseExceptionError):
     DEFAULT_CODE = "external_service_error"
 
 
-class AppExternalServiceTimeout(AppBaseExceptionError):
+class AppExternalServiceTimeoutError(AppBaseExceptionError):
     """External service timeout."""
 
     DEFAULT_MESSAGE = "Layanan eksternal tidak merespons tepat waktu."

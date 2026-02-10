@@ -9,7 +9,7 @@ from httpx_retries import Retry, RetryTransport
 
 from app.core.exceptions import (
     AppExternalServiceError,
-    AppExternalServiceTimeout,
+    AppExternalServiceTimeoutError,
 )
 from app.core.log_config import get_logger, trace_id_ctx
 from app.core.settings import get_app_settings
@@ -120,7 +120,7 @@ class BaseHTTPClient:
         except httpx.TimeoutException as e:
             error_extra = {**log_extra, "error": str(e)}
             self.logger.warning("HTTP_TIMEOUT_ERROR", extra=error_extra)
-            raise AppExternalServiceTimeout(
+            raise AppExternalServiceTimeoutError(
                 message="Layanan eksternal timeout.",
                 error_code="external_service_timeout",
                 context=error_extra,

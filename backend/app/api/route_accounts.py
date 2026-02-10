@@ -60,6 +60,7 @@ async def list_accounts(
     msisdn: str | None = None,
     session: AsyncSession = Depends(get_db_session),
 ) -> list[Accounts]:
+    """List accounts with optional filtering and pagination."""
     service = AccountsService(session)
     return list(
         await service.list_accounts(
@@ -99,5 +100,7 @@ async def update_account(
 async def delete_account(
     payload: AccountDelete,
     session: AsyncSession = Depends(get_db_session),
-) -> None:    """Delete an account either by ID or by msisdn+batch_id."""    service = AccountsService(session)
+) -> None:
+    """Delete an account either by ID or by msisdn+batch_id."""
+    service = AccountsService(session)
     await service.delete_account(payload)
