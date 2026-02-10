@@ -258,6 +258,12 @@ class TransactionService:
                 context={"response": trx_resp},
             )
 
+        otp_required = (
+            account.last_device_id != binding.device_id
+            if account.last_device_id and binding.device_id
+            else True
+        )
+
         trx = await self.create_transaction(
             TransactionCreate(
                 binding_id=binding.id,
@@ -268,7 +274,7 @@ class TransactionService:
                 limit_harga=payload.limit_harga,
                 amount=payload.limit_harga,
                 is_success=int(is_success) if is_success is not None else None,
-                otp_required=payload.otp_required,
+                otp_required=otp_required,
             ),
             snapshot=TransactionSnapshotCreate(
                 balance_start=balance_start_int,

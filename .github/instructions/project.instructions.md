@@ -79,6 +79,31 @@ Token flow saat login:
 OTP → token_login (verifyOtp) → balance_start → token_location
 ```
 
+## ✅ **Flow Transaksi (final)**
+
+Urutan selalu sama:
+
+```
+balance_start → trx_idv → status_idv → balance_end
+```
+
+Aturan status:
+- `is_success == 2` + `voucher != null` → **SUKSES**
+- `is_success == 2` + `voucher == null` → **SUSPECT**
+- selain itu → **PROCESSING** (tunggu OTP), lalu:
+  - OTP masuk → hit `status_idv` lagi
+  - OTP tidak masuk → **GAGAL**
+
+OTP requirement ditentukan oleh:
+- `account.last_device_id` vs `binding.device_id`
+
+## ✅ **Endpoint Orkestrasi Transaksi**
+
+- `POST /v1/transactions/start`
+- `POST /v1/transactions/{id}/otp`
+- `POST /v1/transactions/{id}/continue`
+- `POST /v1/transactions/{id}/stop`
+
 ---
 
 ## ⚙️ **Proses Eksekusi**
