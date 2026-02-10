@@ -25,6 +25,7 @@ class AccountBase(BaseModel):
 
     model_config = {
         "coerce_numbers_to_str": True,
+        "use_enum_values": True,
     }
 
     @field_validator("msisdn", mode="before")
@@ -47,6 +48,7 @@ class AccountCreateSingle(AccountBase):
 
     model_config = {
         "coerce_numbers_to_str": True,
+        "use_enum_values": True,
     }
 
 
@@ -87,6 +89,7 @@ class AccountCreateBulk(BaseModel):
 
     model_config = {
         "coerce_numbers_to_str": True,
+        "use_enum_values": True,
     }
 
 
@@ -113,6 +116,7 @@ class AccountRead(BaseModel):
     model_config = {
         "coerce_numbers_to_str": True,
         "from_attributes": True,
+        "use_enum_values": True,
     }
 
 
@@ -128,6 +132,7 @@ class AccountUpdate(BaseModel):
 
     model_config = {
         "coerce_numbers_to_str": True,
+        "use_enum_values": True,
     }
 
 
@@ -161,6 +166,7 @@ class AccountDelete(BaseModel):
 
     model_config = {
         "coerce_numbers_to_str": True,
+        "use_enum_values": True,
     }
 
     @field_validator("batch_id", mode="before")
