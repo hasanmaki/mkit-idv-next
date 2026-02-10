@@ -200,6 +200,7 @@ class AccountDelete(BaseModel):
     @field_validator("batch_id", mode="before")
     @classmethod
     def validate_batch_for_delete(cls, v: str | None, info):  # type: ignore[override]
+        """Validate that batch_id and msisdn are provided together when required."""
         msisdn = info.data.get("msisdn")
         if msisdn and not v:
             raise ValueError("batch_id is required when msisdn is provided")

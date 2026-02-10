@@ -1,6 +1,6 @@
 """Transaction models for voucher exchange."""
 
-from sqlalchemy import Enum, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.mixins import Base, TimestampMixin
@@ -53,6 +53,7 @@ class Transactions(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
+        """Return a compact representation of the Transaction for debugging."""
         return f"<Transaction trx_id={self.trx_id} status={self.status}>"
 
 
@@ -73,4 +74,7 @@ class TransactionSnapshots(Base, TimestampMixin):
     status_idv_raw: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<TransactionSnapshot id={self.id} transaction_id={self.transaction_id}>"
+        """Return a short representation of the TransactionSnapshot for debugging."""
+        return (
+            f"<TransactionSnapshot id={self.id} transaction_id={self.transaction_id}>"
+        )

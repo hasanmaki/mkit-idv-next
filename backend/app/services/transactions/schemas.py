@@ -85,7 +85,9 @@ class TransactionStartRequest(BaseModel):
     product_id: str = Field(..., description="Product ID", examples=["650"])
     email: str = Field(..., description="Email", examples=["user@example.com"])
     limit_harga: int = Field(..., description="Limit harga", examples=[100000])
-    otp_required: bool = Field(False, description="OTP required for first trx", examples=[True])
+    otp_required: bool = Field(
+        False, description="OTP required for first trx", examples=[True]
+    )
 
     model_config = {"use_enum_values": True}
 
@@ -157,8 +159,12 @@ class TransactionSnapshotRead(BaseModel):
     transaction_id: int = Field(..., examples=[1])
     balance_start: int | None = Field(None, examples=[7851])
     balance_end: int | None = Field(None, examples=[0])
-    trx_idv_raw: dict | None = Field(None, examples=[{"res": {"data": {"trx_id": "..."}}}])
-    status_idv_raw: dict | None = Field(None, examples=[{"res": {"data": {"voucher": "..."}}}])
+    trx_idv_raw: dict | None = Field(
+        None, examples=[{"res": {"data": {"trx_id": "..."}}}]
+    )
+    status_idv_raw: dict | None = Field(
+        None, examples=[{"res": {"data": {"voucher": "..."}}}]
+    )
     created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
     updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 

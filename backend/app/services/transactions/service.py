@@ -215,7 +215,9 @@ class TransactionService:
                 context={"response": trx_resp},
             )
 
-        otp_required = self._compute_otp_required(account.last_device_id, binding.device_id)
+        otp_required = self._compute_otp_required(
+            account.last_device_id, binding.device_id
+        )
 
         trx = await self.create_transaction(
             TransactionCreate(
@@ -265,7 +267,10 @@ class TransactionService:
 
         return await self.get_transaction(trx.id)
 
-    async def _load_binding_context(self, binding_id: int) -> tuple[Bindings, Accounts, Servers]:
+    async def _load_binding_context(
+        self, binding_id: int
+    ) -> tuple[Bindings, Accounts, Servers]:
+        """Load and return (binding, account, server) for a binding_id. Raises AppNotFoundError if any entity is missing."""
         binding = await self.bindings.get(self.session, binding_id)
         if not binding:
             raise AppNotFoundError(
@@ -292,6 +297,7 @@ class TransactionService:
         return binding, account, server
 
     async def _fetch_balance_int(self, idv: IdvService, msisdn: str) -> int | None:
+        """Fetch balance from IDV service and return it as an integer if available."""
         balance_resp = await idv.get_balance_pulsa(msisdn)
         balance_value = None
         if isinstance(balance_resp, dict):
@@ -306,7 +312,10 @@ class TransactionService:
             return None
 
     @staticmethod
-    def _parse_trx_response(trx_resp: dict | None) -> tuple[str | None, str | None, int | None]:
+    def _parse_trx_response(
+        trx_resp: dict | None,
+    ) -> tuple[str | None, str | None, int | None]:
+        """Parse IDV transaction response and return (trx_id, t_id, is_success)."""
         trx_id = None
         t_id = None
         is_success = None
@@ -319,7 +328,10 @@ class TransactionService:
         return trx_id, t_id, is_success
 
     @staticmethod
-    def _parse_status_response(status_resp: dict | None) -> tuple[int | None, str | None]:
+    def _parse_status_response(
+        status_resp: dict | None,
+    ) -> tuple[int | None, str | None]:
+        """Parse IDV status response and return (is_success_status, voucher_code)."""
         is_success_status = None
         voucher_code = None
         if isinstance(status_resp, dict):
@@ -330,7 +342,10 @@ class TransactionService:
         return is_success_status, voucher_code
 
     @staticmethod
-    def _compute_status(is_success_status: int | None, voucher_code: str | None) -> TransactionStatus:
+    def _compute_status(
+        is_success_status: int | None, voucher_code: str | None
+    ) -> TransactionStatus:
+        """Compute a TransactionStatus from IDV status and voucher presence."""
         if is_success_status == 2 and voucher_code:
             return TransactionStatus.SUKSES
         if is_success_status == 2 and not voucher_code:
@@ -341,6 +356,7 @@ class TransactionService:
     def _compute_otp_required(
         last_device_id: str | None, current_device_id: str | None
     ) -> bool:
+        """Determine whether OTP verification is required based on device IDs."""
         if last_device_id and current_device_id:
             return last_device_id != current_device_id
         return True
@@ -441,6 +457,7 @@ class TransactionService:
     def _compute_status_after_otp(
         is_success_status: int | None, voucher_code: str | None
     ) -> TransactionStatus:
+        """Compute the final TransactionStatus after OTP verification."""
         if is_success_status == 2 and voucher_code:
             return TransactionStatus.SUKSES
         if is_success_status == 2 and not voucher_code:
@@ -449,12 +466,14 @@ class TransactionService:
 
     @staticmethod
     def _extract_otp_error(otp_resp: dict | None) -> str | None:
+        """Extract an error message from an OTP response, if present."""
         if isinstance(otp_resp, dict):
             return str(otp_resp.get("res", {}).get("message"))
         return None
 
     @staticmethod
     def _is_otp_ok(otp_resp: dict | None) -> bool:
+        """Return True if the OTP response indicates success, False otherwise."""
         if not isinstance(otp_resp, dict):
             return False
         res = otp_resp.get("res", {})

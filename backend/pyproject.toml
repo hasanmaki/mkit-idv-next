@@ -12,6 +12,7 @@ dependencies = [
     "httpx-retries>=0.4.5",
     "loguru-config>=0.1.0",
     "pydantic-settings>=2.12.0",
+    "ruff>=0.15.0",
     "sqlalchemy>=2.0.46",
 ]
 
@@ -45,6 +46,7 @@ package = true
 
 [dependency-groups]
 dev = [
+    "interrogate>=1.7.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
@@ -153,6 +155,16 @@ pythonVersion = "3.13"
 reportMissingImports = "error"
 reportMissingModuleSource = "none"
 reportUnnecessaryTypeIgnoreComment = "information"
+
+[tool.interrogate]
+# Docstring coverage checks performed by `interrogate` (https://interrogate.readthedocs.io)
+# These defaults are tuned for local development. Adjust `fail-under` as needed.
+paths = ["app"]
+exclude = ["tests"]
+fail-under = 80.0
+style = "google"
+omit-covered-files = true
+ignore-init-module = true
 
 [tool.coverage.run]
 source = ["app","tests"]

@@ -46,6 +46,7 @@ class Bindings(Base, TimestampMixin):
     unbound_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
+        """Return a short string representation of the Binding for debugging."""
         return (
             f"<Binding id={self.id} account_id={self.account_id} "
             f"server_id={self.server_id} step={self.step}>"

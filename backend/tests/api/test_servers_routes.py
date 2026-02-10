@@ -32,7 +32,27 @@ class FakeService:
         _ = is_active
         return [
             await self.create_server(
-                SimpleNamespace(**{
+                SimpleNamespace(
+                    **{
+                        "port": 9900,
+                        "base_url": "http://localhost:9900",
+                        "description": None,
+                        "timeout": 10,
+                        "retries": 3,
+                        "wait_between_retries": 1,
+                        "max_requests_queued": 5,
+                        "is_active": True,
+                        "notes": None,
+                    }
+                )
+            )
+        ]
+
+    async def get_server(self, server_id: int):
+        _ = server_id
+        return await self.create_server(
+            SimpleNamespace(
+                **{
                     "port": 9900,
                     "base_url": "http://localhost:9900",
                     "description": None,
@@ -42,24 +62,8 @@ class FakeService:
                     "max_requests_queued": 5,
                     "is_active": True,
                     "notes": None,
-                })
+                }
             )
-        ]
-
-    async def get_server(self, server_id: int):
-        _ = server_id
-        return await self.create_server(
-            SimpleNamespace(**{
-                "port": 9900,
-                "base_url": "http://localhost:9900",
-                "description": None,
-                "timeout": 10,
-                "retries": 3,
-                "wait_between_retries": 1,
-                "max_requests_queued": 5,
-                "is_active": True,
-                "notes": None,
-            })
         )
 
     async def update_server(self, server_id: int, data):

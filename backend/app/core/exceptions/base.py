@@ -1,6 +1,10 @@
 # Copyright (c) 2026 okedigitalmedia/hasanmaki. All rights reserved.
-# [ ] TODO : Fix Later About Docstring
-"""Base exceptions used across the application."""
+"""Application base exceptions and common subclasses.
+
+Provides :class:`AppBaseExceptionError` with helpers to serialize exceptions
+for API responses and structured logging, plus common concrete subclasses
+(e.g., :class:`AppNotFoundError`, :class:`AppValidationError`).
+"""
 
 from typing import Any
 
@@ -70,6 +74,7 @@ class AppBaseExceptionError(Exception):
         }
 
     def __repr__(self) -> str:
+        """Return a compact representation including message, context and error code."""
         return (
             f"{self.__class__.__name__}("
             f"message={str(self)!r}, "

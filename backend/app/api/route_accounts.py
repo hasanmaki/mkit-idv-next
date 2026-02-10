@@ -11,8 +11,8 @@ from app.services.accounts import (
     AccountCreateSingle,
     AccountDelete,
     AccountRead,
-    AccountUpdate,
     AccountsService,
+    AccountUpdate,
 )
 
 router = APIRouter()
@@ -27,6 +27,7 @@ async def create_account(
     payload: AccountCreateSingle,
     session: AsyncSession = Depends(get_db_session),
 ) -> Accounts:
+    """Create a single account from the request payload and return it."""
     service = AccountsService(session)
     return await service.create_single(payload)
 
@@ -40,6 +41,7 @@ async def create_accounts_bulk(
     payload: AccountCreateBulk,
     session: AsyncSession = Depends(get_db_session),
 ) -> list[Accounts]:
+    """Create multiple accounts in a batch and return created accounts."""
     service = AccountsService(session)
     return await service.create_bulk(payload)
 
@@ -77,6 +79,7 @@ async def get_account(
     account_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> Accounts:
+    """Retrieve a single account by ID."""
     service = AccountsService(session)
     return await service.get_account(account_id)
 
@@ -87,6 +90,7 @@ async def update_account(
     payload: AccountUpdate,
     session: AsyncSession = Depends(get_db_session),
 ) -> Accounts:
+    """Update an account by ID with provided fields and return the updated object."""
     service = AccountsService(session)
     return await service.update_account(account_id, payload)
 
@@ -95,6 +99,5 @@ async def update_account(
 async def delete_account(
     payload: AccountDelete,
     session: AsyncSession = Depends(get_db_session),
-) -> None:
-    service = AccountsService(session)
+) -> None:    """Delete an account either by ID or by msisdn+batch_id."""    service = AccountsService(session)
     await service.delete_account(payload)

@@ -51,6 +51,7 @@ class InterceptHandler(logging.Handler):
 
 
 def _configure_standard_logging() -> None:
+    """Redirect standard library logging to Loguru using the InterceptHandler."""
     logging.root.handlers = [InterceptHandler()]
     logging.root.setLevel(logging.INFO)
 

@@ -125,9 +125,7 @@ class AccountsService:
         logger.debug("Accounts retrieved", extra={"count": len(accounts)})
         return accounts
 
-    async def update_account(
-        self, account_id: int, data: AccountUpdate
-    ) -> Accounts:
+    async def update_account(self, account_id: int, data: AccountUpdate) -> Accounts:
         """Update account by ID."""
         account = await self.repo.get(self.session, account_id)
         if not account:

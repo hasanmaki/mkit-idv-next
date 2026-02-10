@@ -34,6 +34,7 @@ class Accounts(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:
+        """Return a short string representation of the Account for debugging."""
         return (
             f"<Account id={self.id} msisdn={self.msisdn} "
             f"batch_id={self.batch_id} status={self.status}>"

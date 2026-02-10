@@ -1,20 +1,9 @@
 # Copyright (c) 2026 okedigitalmedia/hasanmaki. All rights reserved.
-# [ ] TODO : Fix Later About Docstring
-"""Application Settings.
+"""Application settings and configuration management.
 
-we use pydantic-settings to manage application settings and configurations.
-Key Features:
-
-
-Attributes:
-    - Second key feature
-    - Second key feature
-
-Example:
-    from module import something
-
-Note:
-    - Important constraints or considerations
+Provides Pydantic-based settings models (Google-style) used across the application,
+including CORS, HTTPX, and database configuration. Use :func:`get_app_settings`
+for a cached application settings instance.
 """
 
 from functools import lru_cache
@@ -76,9 +65,3 @@ class AppSettings(BaseSettings):
 def get_app_settings() -> AppSettings:
     """Get cached application settings."""
     return AppSettings()  # type: ignore
-
-
-# quick testing
-if __name__ == "__main__":
-    settings = get_app_settings()
-    print(settings.model_dump_json(indent=4))

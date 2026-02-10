@@ -207,6 +207,7 @@ class IdvService:
 
     @staticmethod
     def _validate_required(field_name: str, value: str) -> None:
+        """Raise AppValidationError when a required field is missing or empty."""
         if not value:
             raise AppValidationError(
                 message=f"{field_name} wajib diisi.",
@@ -216,6 +217,7 @@ class IdvService:
 
     @staticmethod
     def _extract_trx_id(payload: dict[str, Any]) -> str:
+        """Extract `trx_id` from an IDV transaction response or raise AppValidationError."""
         trx_id = payload.get("trx_id")
         if not trx_id:
             raise AppValidationError(

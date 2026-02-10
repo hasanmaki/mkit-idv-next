@@ -27,6 +27,7 @@ async def create_transaction(
     payload: TransactionCreateRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Create a transaction and optional snapshot from request payload."""
     service = TransactionService(session)
     return await service.create_transaction(
         payload.transaction, snapshot=payload.snapshot
@@ -38,6 +39,7 @@ async def start_transaction(
     payload: TransactionStartRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Start a transaction flow: balance -> trx -> status -> snapshot updates."""
     service = TransactionService(session)
     return await service.start_transaction(payload)
 
@@ -48,6 +50,7 @@ async def submit_otp(
     payload: TransactionOtpRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Submit an OTP for a transaction and re-check status/balance."""
     service = TransactionService(session)
     return await service.submit_otp(transaction_id, payload)
 
@@ -57,6 +60,7 @@ async def continue_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Continue an in-progress transaction by re-checking status and balance."""
     service = TransactionService(session)
     return await service.continue_transaction(transaction_id)
 
@@ -67,6 +71,7 @@ async def stop_transaction(
     payload: TransactionStopRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Stop a transaction manually with an optional reason."""
     service = TransactionService(session)
     return await service.stop_transaction(transaction_id, payload)
 
@@ -82,6 +87,7 @@ async def list_transactions(
     batch_id: str | None = None,
     session: AsyncSession = Depends(get_db_session),
 ) -> list[Transactions]:
+    """List transactions with optional filters and pagination."""
     service = TransactionService(session)
     return list(
         await service.list_transactions(
@@ -101,6 +107,7 @@ async def get_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Retrieve a transaction by its ID."""
     service = TransactionService(session)
     return await service.get_transaction(transaction_id)
 
@@ -111,6 +118,7 @@ async def update_transaction_status(
     payload: TransactionStatusUpdate,
     session: AsyncSession = Depends(get_db_session),
 ) -> Transactions:
+    """Update the status fields of a transaction."""
     service = TransactionService(session)
     return await service.update_status(transaction_id, payload)
 
@@ -121,6 +129,7 @@ async def update_transaction_snapshot(
     payload: TransactionSnapshotUpdate,
     session: AsyncSession = Depends(get_db_session),
 ) -> TransactionSnapshots:
+    """Update the snapshot for a transaction and return it."""
     service = TransactionService(session)
     return await service.update_snapshot(transaction_id, payload)
 
@@ -130,6 +139,7 @@ async def get_transaction_snapshot(
     transaction_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> TransactionSnapshots:
+    """Retrieve a transaction snapshot by transaction ID."""
     service = TransactionService(session)
     snapshot = await service.snapshots.get_by(session, transaction_id=transaction_id)
     if not snapshot:
@@ -146,5 +156,6 @@ async def delete_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
+    """Delete a transaction by ID."""
     service = TransactionService(session)
     await service.delete_transaction(transaction_id)

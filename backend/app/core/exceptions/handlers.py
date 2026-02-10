@@ -27,12 +27,19 @@ def _extract_trace_id(request: Request) -> str:
 
 
 def _build_response(payload: dict, status_code: int, trace_id: str) -> JSONResponse:
+    """Build a JSONResponse and attach the X-Trace-Id header."""
     response = JSONResponse(status_code=status_code, content=payload)
     response.headers["X-Trace-Id"] = trace_id
     return response
 
 
-def make_app_base_exception_handler(logger_):  # noqa: D103
+def make_app_base_exception_handler(logger_):
+    """Return an exception handler that handles :class:`AppBaseExceptionError`.
+
+    The returned handler logs the exception and builds a JSON response that includes
+    the trace id and (optionally) exposed context when debug is enabled.
+    """
+
     async def handler(request: Request, exc: Exception) -> JSONResponse:  # noqa: RUF029
         """Handle AppBaseExceptionError and return JSON response."""
         assert isinstance(exc, AppBaseExceptionError)
@@ -58,6 +65,11 @@ def make_app_base_exception_handler(logger_):  # noqa: D103
 
 
 def make_http_exception_handler(logger_):
+    """Return an exception handler that handles FastAPI :class:`HTTPException`.
+
+    The handler logs the HTTP error and returns a JSON response with a trace id.
+    """
+
     async def handler(request: Request, exc: Exception) -> JSONResponse:  # noqa: RUF029
         """Handle FastAPI HTTPException and return JSON response."""
         assert isinstance(exc, HTTPException)
@@ -88,6 +100,12 @@ def make_http_exception_handler(logger_):
 
 
 def make_unexpected_exception_handler(logger_):
+    """Return an exception handler for unexpected Exceptions.
+
+    The handler logs the exception at critical level and returns a 500 JSON response
+    including a trace id.
+    """
+
     async def handler(request: Request, exc: Exception) -> JSONResponse:  # noqa: RUF029
         """Handle unexpected Exception and return generic JSON response."""
         trace_id = _extract_trace_id(request)

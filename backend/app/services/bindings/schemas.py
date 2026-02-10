@@ -42,7 +42,9 @@ class BindingLogout(BaseModel):
 
     last_error_code: str | None = Field(None, examples=["manual_logout"])
     last_error_message: str | None = Field(None, examples=["User requested"])
-    account_status: AccountStatus | None = Field(None, examples=[AccountStatus.EXHAUSTED])
+    account_status: AccountStatus | None = Field(
+        None, examples=[AccountStatus.EXHAUSTED]
+    )
 
     model_config = {"use_enum_values": True}
 
@@ -51,7 +53,9 @@ class BindingVerifyLogin(BaseModel):
     """Payload to verify login and reseller status."""
 
     otp: str = Field(..., description="OTP code for verification", examples=["123456"])
-    pin: str | None = Field(None, description="Optional PIN override", examples=["1234"])
+    pin: str | None = Field(
+        None, description="Optional PIN override", examples=["1234"]
+    )
 
     model_config = {"use_enum_values": True}
 

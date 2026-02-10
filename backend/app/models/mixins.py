@@ -1,11 +1,8 @@
 # Copyright (c) 2026 okedigitalmedia/hasanmaki. All rights reserved.
-# [ ] TODO : Fix Later About Docstring
-"""This Module Provide a Mixins, for commong fields.
+"""SQLAlchemy mixins and base declarative class.
 
-    SQL Alchemy Mixins
-
-Note:
-    - Important constraints or considerations
+Defines reusable columns and a declarative base used by ORM models
+(e.g., :class:`TimestampMixin` and :class:`Base`).
 """
 
 from datetime import datetime

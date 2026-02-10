@@ -1,9 +1,8 @@
 # Copyright (c) 2026 okedigitalmedia/hasanmaki. All rights reserved.
-# [ ] TODO : Fix Later About Docstring
-"""representasi api myim3.
+"""Server model definitions.
 
-tabale ini untuk holder data api server yg sudah di konfigurasi.
-
+Represents configured API servers (base URL, port, and runtime settings) used by
+binding and transaction flows.
 """
 
 from typing import Any
@@ -41,4 +40,5 @@ class Servers(Base, TimestampMixin):
     notes: Mapped[str] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:
+        """Return a short string representation of the Server for debugging."""
         return f"<Server id={self.id} port={self.port} url={self.base_url}>"

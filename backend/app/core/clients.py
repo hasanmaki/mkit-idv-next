@@ -38,7 +38,9 @@ class BaseHTTPClient:
             backoff_factor if backoff_factor is not None else httpx_cfg.backoff_factor
         )
         self.max_connections = (
-            max_connections if max_connections is not None else httpx_cfg.max_connections
+            max_connections
+            if max_connections is not None
+            else httpx_cfg.max_connections
         )
         self.max_keepalive = (
             max_keepalive if max_keepalive is not None else httpx_cfg.max_keepalive

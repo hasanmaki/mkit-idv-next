@@ -1,6 +1,6 @@
 """Repository for Transactions models."""
 
-from app.models.transactions import TransactionSnapshots, Transactions
+from app.models.transactions import Transactions, TransactionSnapshots
 from app.repos.base import BaseRepository
 
 

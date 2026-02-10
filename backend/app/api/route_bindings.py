@@ -23,6 +23,7 @@ async def create_binding(
     payload: BindingCreate,
     session: AsyncSession = Depends(get_db_session),
 ) -> Bindings:
+    """Create a binding between an account and a server."""
     service = BindingService(session)
     return await service.create_binding(payload)
 
@@ -38,6 +39,7 @@ async def list_bindings(
     active_only: bool | None = None,
     session: AsyncSession = Depends(get_db_session),
 ) -> list[Bindings]:
+    """List bindings with optional filters and pagination."""
     service = BindingService(session)
     return await service.list_bindings(
         skip=skip,
@@ -55,6 +57,7 @@ async def get_binding(
     binding_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> Bindings:
+    """Get a binding by ID."""
     service = BindingService(session)
     return await service.get_binding(binding_id)
 
@@ -65,6 +68,7 @@ async def update_binding(
     payload: BindingUpdate,
     session: AsyncSession = Depends(get_db_session),
 ) -> Bindings:
+    """Update fields of an existing binding and return the updated binding."""
     service = BindingService(session)
     return await service.update_binding(binding_id, payload)
 
@@ -75,6 +79,7 @@ async def logout_binding(
     payload: BindingLogout,
     session: AsyncSession = Depends(get_db_session),
 ) -> Bindings:
+    """Logout/unbind a binding and return the updated binding."""
     service = BindingService(session)
     return await service.logout_binding(binding_id, payload)
 
@@ -85,6 +90,7 @@ async def verify_login(
     payload: BindingVerifyLogin,
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
+    """Verify login OTP and reseller status for a binding."""
     service = BindingService(session)
     return await service.verify_login_and_reseller(binding_id, payload)
 
@@ -94,5 +100,6 @@ async def delete_binding(
     binding_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
+    """Delete a binding by ID."""
     service = BindingService(session)
     await service.delete_binding(binding_id)

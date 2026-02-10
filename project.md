@@ -32,3 +32,19 @@
 2. cek status trx idv dengan trx_id
 
 ## about project
+
+## 📣 Docstring coverage (Interrogate) 🔧
+
+We use `interrogate` to enforce docstring coverage locally.
+
+- Install (if not already): `pip install interrogate`
+- Run (from repo root): `interrogate backend/app -c backend/pyproject.toml` or `cd backend && interrogate`
+
+Defaults configured:
+
+- Paths: `app`
+- Exclude: `tests`
+- Minimum coverage (fail-under): `80%`
+- Docstring style: `google`
+
+To change the threshold or options, edit the `[tool.interrogate]` section in `backend/pyproject.toml`.
