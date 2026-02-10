@@ -222,3 +222,6 @@ __marimo__/
 .qwen/
 *.db
 .reports/
+*_trx.json
+*_session.json
+sample_responses.md
