@@ -22,6 +22,7 @@ class Bindings(Base, TimestampMixin):
     account_id: Mapped[int] = mapped_column(
         ForeignKey("accounts.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    batch_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
     step: Mapped[BindingStep] = mapped_column(
         Enum(BindingStep, name="binding_step"),
