@@ -5,7 +5,7 @@ from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AppValidationError
+from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.servers import Servers
 from app.repos.server_repo import ServerRepository
@@ -116,3 +116,47 @@ class ServerService:
         status_str = "enabled" if is_active else "disabled"
         logger.info(f"Server {status_str} successfully", extra={"server_id": server_id})
         return updated
+
+    async def get_server(self, server_id: int) -> Servers:
+        """Retrieve a server by ID or raise AppNotFoundError."""
+        server = await self.repo.get(self.session, server_id)
+        if not server:
+            logger.warning("Server not found", extra={"server_id": server_id})
+            raise AppNotFoundError(
+                message=f"Server with ID {server_id} not found",
+                error_code="server_not_found",
+                context={"server_id": server_id},
+            )
+        return server
+
+    async def get_servers(
+        self, skip: int = 0, limit: int = 100, is_active: bool | None = None
+    ) -> list[Servers]:
+        """List servers with optional filtering and pagination."""
+        filters: dict = {}
+        if is_active is not None:
+            filters["is_active"] = is_active
+        servers = await self.repo.get_multi(
+            self.session, skip=skip, limit=limit, **filters
+        )
+        servers_list = list(servers)
+        logger.debug(
+            "Retrieved servers",
+            extra={"count": len(servers_list), "is_active": is_active},
+        )
+        return servers_list
+
+    async def delete_server(self, server_id: int) -> None:
+        """Delete a server by ID or raise AppNotFoundError."""
+        server = await self.repo.get(self.session, server_id)
+        if not server:
+            logger.warning(
+                "Server not found for delete", extra={"server_id": server_id}
+            )
+            raise AppNotFoundError(
+                message=f"Server with ID {server_id} not found",
+                error_code="server_not_found",
+                context={"server_id": server_id},
+            )
+        await self.repo.delete(self.session, server_id)
+        logger.info("Server deleted successfully", extra={"server_id": server_id})

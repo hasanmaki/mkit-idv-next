@@ -1,9 +1,11 @@
+"""main entry point for the FastAPI application."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import servers  # , bindings
+from app.api import route_servers  # , bindings
 from app.core.exceptions.handlers import register_exception_handlers
 from app.core.log_config import configure_logging
 from app.core.middlewares import RequestLoggingMiddleware, TraceIDMiddleware
@@ -16,7 +18,8 @@ configure_logging()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # noqa: ARG001
+    """Lifespan context manager for FastAPI app."""
     # Startup: create tables
     await create_tables()
     yield
@@ -44,7 +47,7 @@ app.add_middleware(
 app.add_middleware(TraceIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
-app.include_router(servers.router, prefix="/v1/servers")
+app.include_router(route_servers.router, prefix="/v1/servers")
 # app.include_router(bindings.router, prefix="/v1/bindings")
 
 # Register exception handlers setelah middleware
