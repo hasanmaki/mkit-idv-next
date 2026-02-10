@@ -37,6 +37,7 @@ class Servers(Base, TimestampMixin):
 
     # Flexible config (e.g., provider type, headers, etc.)
     parameters: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:

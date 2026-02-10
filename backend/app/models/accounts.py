@@ -30,6 +30,7 @@ class Accounts(Base, TimestampMixin):
     balance_last: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:

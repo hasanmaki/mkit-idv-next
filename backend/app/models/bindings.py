@@ -38,6 +38,7 @@ class Bindings(Base, TimestampMixin):
     last_error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
     token_login: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     token_location: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     bound_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), nullable=False

@@ -61,6 +61,11 @@ class ServerCreate(BaseModel):
         max_length=255,
         description="Additional notes or metadata",
     )
+    device_id: str | None = Field(
+        None,
+        max_length=100,
+        description="Optional device id for this server instance",
+    )
 
     @field_validator("base_url", mode="before")
     @classmethod
@@ -83,6 +88,7 @@ class ServerUpdate(BaseModel):
     max_requests_queued: int | None = Field(None, ge=1, le=20)
     is_active: bool | None = None
     notes: str | None = Field(None, max_length=255)
+    device_id: str | None = Field(None, max_length=100)
 
 
 class ServerResponse(BaseModel):
@@ -98,6 +104,7 @@ class ServerResponse(BaseModel):
     max_requests_queued: int
     is_active: bool
     notes: str | None
+    device_id: str | None
     created_at: datetime
     updated_at: datetime
 

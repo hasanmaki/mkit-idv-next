@@ -80,6 +80,7 @@ class BindingService:
             server_id=data.server_id,
             account_id=data.account_id,
             batch_id=account.batch_id,
+            device_id=server.device_id,
             step=BindingStep.BOUND,
             balance_start=data.balance_start,
             balance_last=data.balance_start,
@@ -90,6 +91,7 @@ class BindingService:
             status=AccountStatus.ACTIVE,
             used_count=account.used_count + 1,
             last_used_at=datetime.utcnow(),
+            last_device_id=server.device_id,
         )
 
         logger.info(

@@ -28,6 +28,7 @@ class BindingUpdate(BaseModel):
     last_error_message: str | None = None
     token_login: str | None = None
     token_location: str | None = None
+    device_id: str | None = None
 
 
 class BindingLogout(BaseModel):
@@ -60,6 +61,7 @@ class BindingRead(BaseModel):
     last_error_message: str | None
     token_login: str | None
     token_location: str | None
+    device_id: str | None
     bound_at: datetime
     unbound_at: datetime | None
     created_at: datetime

@@ -105,6 +105,7 @@ class AccountRead(BaseModel):
     balance_last: int | None = None
     used_count: int = 0
     last_used_at: datetime | None = None
+    last_device_id: str | None = None
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -123,6 +124,7 @@ class AccountUpdate(BaseModel):
     notes: str | None = Field(None, description="Update notes")
     status: AccountStatus | None = Field(None, description="Set account status")
     is_reseller: bool | None = Field(None, description="Set reseller flag")
+    last_device_id: str | None = Field(None, description="Update last device id")
 
     model_config = {
         "coerce_numbers_to_str": True,
