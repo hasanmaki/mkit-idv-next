@@ -94,7 +94,9 @@ async def test_create_server_route(monkeypatch):
 async def test_list_get_update_delete_routes(monkeypatch):
     monkeypatch.setattr("app.api.route_servers.ServerService", FakeService)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:  # type: ignore[arg-type]
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:  # type: ignore[arg-type]
         r = await ac.get("/v1/servers/")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
