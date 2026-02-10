@@ -12,6 +12,7 @@ from app.services.bindings import (
     BindingRead,
     BindingService,
     BindingUpdate,
+    BindingVerifyLogin,
 )
 
 router = APIRouter()
@@ -76,6 +77,16 @@ async def logout_binding(
 ) -> Bindings:
     service = BindingService(session)
     return await service.logout_binding(binding_id, payload)
+
+
+@router.post("/{binding_id}/verify-login")
+async def verify_login(
+    binding_id: int,
+    payload: BindingVerifyLogin,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    service = BindingService(session)
+    return await service.verify_login_and_reseller(binding_id, payload)
 
 
 @router.delete("/{binding_id}", status_code=status.HTTP_204_NO_CONTENT)

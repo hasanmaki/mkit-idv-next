@@ -72,7 +72,7 @@ class BaseHTTPClient:
         method: str,
         endpoint: str,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> httpx.Response:
         """Make request with retry logic and structured logging."""
         url = f"{self.base_url}{endpoint}"
         trace_id = trace_id_ctx.get("no-trace")
@@ -94,7 +94,7 @@ class BaseHTTPClient:
                 "status_code": response.status_code,
             }
             self.logger.info("HTTP_REQUEST_SUCCESS", extra=success_extra)
-            return response.json()
+            return response
 
         except httpx.HTTPStatusError as e:
             error_extra = {
@@ -135,16 +135,6 @@ class BaseHTTPClient:
                 original_exception=e,
             ) from e
 
-        except ValueError as e:
-            error_extra = {**log_extra, "error": str(e)}
-            self.logger.error("HTTP_RESPONSE_DECODE_ERROR", extra=error_extra)
-            raise AppExternalServiceError(
-                message="Respons layanan eksternal tidak valid.",
-                error_code="external_service_invalid_response",
-                context=error_extra,
-                original_exception=e,
-            ) from e
-
         except Exception as e:
             error_extra = {**log_extra, "error": str(e)}
             self.logger.error("HTTP_UNEXPECTED_ERROR", extra=error_extra)
@@ -163,9 +153,40 @@ class BaseHTTPClient:
     ) -> dict[str, Any]:
         """Public helper for JSON requests."""
         async with self.get_client() as client:
-            return await self._make_request_with_retry(
+            response = await self._make_request_with_retry(
                 client,
                 method,
                 endpoint,
                 **kwargs,
             )
+            try:
+                return response.json()
+            except ValueError as e:
+                error_extra = {
+                    "method": method,
+                    "url": f"{self.base_url}{endpoint}",
+                    "error": str(e),
+                }
+                self.logger.error("HTTP_RESPONSE_DECODE_ERROR", extra=error_extra)
+                raise AppExternalServiceError(
+                    message="Respons layanan eksternal tidak valid.",
+                    error_code="external_service_invalid_response",
+                    context=error_extra,
+                    original_exception=e,
+                ) from e
+
+    async def request_text(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs,
+    ) -> str:
+        """Public helper for text responses."""
+        async with self.get_client() as client:
+            response = await self._make_request_with_retry(
+                client,
+                method,
+                endpoint,
+                **kwargs,
+            )
+            return response.text

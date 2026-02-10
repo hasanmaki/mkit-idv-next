@@ -26,6 +26,8 @@ class BindingUpdate(BaseModel):
     is_reseller: bool | None = None
     last_error_code: str | None = None
     last_error_message: str | None = None
+    token_login: str | None = None
+    token_location: str | None = None
 
 
 class BindingLogout(BaseModel):
@@ -34,6 +36,13 @@ class BindingLogout(BaseModel):
     last_error_code: str | None = None
     last_error_message: str | None = None
     account_status: AccountStatus | None = None
+
+
+class BindingVerifyLogin(BaseModel):
+    """Payload to verify login and reseller status."""
+
+    otp: str = Field(..., description="OTP code for verification")
+    pin: str | None = Field(None, description="Optional PIN override")
 
 
 class BindingRead(BaseModel):
@@ -49,6 +58,8 @@ class BindingRead(BaseModel):
     balance_last: int | None
     last_error_code: str | None
     last_error_message: str | None
+    token_login: str | None
+    token_location: str | None
     bound_at: datetime
     unbound_at: datetime | None
     created_at: datetime

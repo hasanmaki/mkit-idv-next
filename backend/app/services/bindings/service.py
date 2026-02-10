@@ -14,7 +14,13 @@ from app.models.steps import BindingStep
 from app.repos.account_repo import AccountRepository
 from app.repos.binding_repo import BindingRepository
 from app.repos.server_repo import ServerRepository
-from app.services.bindings.schemas import BindingCreate, BindingLogout, BindingUpdate
+from app.services.bindings.schemas import (
+    BindingCreate,
+    BindingLogout,
+    BindingUpdate,
+    BindingVerifyLogin,
+)
+from app.services.idv import IdvService
 
 logger = get_logger("service.bindings")
 
@@ -63,7 +69,10 @@ class BindingService:
             raise AppValidationError(
                 message="Account masih terikat pada server lain.",
                 error_code="binding_account_active",
-                context={"account_id": data.account_id, "binding_id": active_account.id},
+                context={
+                    "account_id": data.account_id,
+                    "binding_id": active_account.id,
+                },
             )
 
         binding = await self.bindings.create(
@@ -89,9 +98,7 @@ class BindingService:
         )
         return binding
 
-    async def update_binding(
-        self, binding_id: int, data: BindingUpdate
-    ) -> Bindings:
+    async def update_binding(self, binding_id: int, data: BindingUpdate) -> Bindings:
         """Update binding fields."""
         binding = await self.bindings.get(self.session, binding_id)
         if not binding:
@@ -109,9 +116,7 @@ class BindingService:
         logger.info("Binding updated", extra={"binding_id": binding_id})
         return updated
 
-    async def logout_binding(
-        self, binding_id: int, data: BindingLogout
-    ) -> Bindings:
+    async def logout_binding(self, binding_id: int, data: BindingLogout) -> Bindings:
         """Logout (unbind) a binding."""
         binding = await self.bindings.get(self.session, binding_id)
         if not binding:
@@ -145,6 +150,122 @@ class BindingService:
             await self.accounts.update(self.session, account, status=new_status)
         logger.info("Binding logged out", extra={"binding_id": binding_id})
         return updated
+
+    async def verify_login_and_reseller(
+        self, binding_id: int, payload: BindingVerifyLogin
+    ) -> dict:
+        """Verify OTP, fetch balance/token, and check reseller status."""
+        binding = await self.bindings.get(self.session, binding_id)
+        if not binding:
+            raise AppNotFoundError(
+                message=f"Binding ID {binding_id} tidak ditemukan.",
+                error_code="binding_not_found",
+                context={"binding_id": binding_id},
+            )
+
+        account = await self.accounts.get(self.session, binding.account_id)
+        if not account:
+            raise AppNotFoundError(
+                message=f"Account ID {binding.account_id} tidak ditemukan.",
+                error_code="account_not_found",
+                context={"account_id": binding.account_id},
+            )
+
+        server = await self.servers.get(self.session, binding.server_id)
+        if not server:
+            raise AppNotFoundError(
+                message=f"Server ID {binding.server_id} tidak ditemukan.",
+                error_code="server_not_found",
+                context={"server_id": binding.server_id},
+            )
+
+        pin = payload.pin or account.pin
+        if not pin:
+            raise AppValidationError(
+                message="PIN tidak tersedia untuk account ini.",
+                error_code="account_pin_missing",
+                context={"account_id": account.id},
+            )
+
+        idv = IdvService.from_server(server)
+
+        await self.bindings.update(
+            self.session, binding, step=BindingStep.OTP_REQUESTED
+        )
+        otp_req = await idv.request_otp(account.msisdn, pin)
+
+        await self.bindings.update(
+            self.session, binding, step=BindingStep.OTP_VERIFICATION
+        )
+        otp_verify = await idv.verify_otp(account.msisdn, payload.otp)
+
+        await self.bindings.update(self.session, binding, step=BindingStep.OTP_VERIFIED)
+
+        token_login = None
+        if isinstance(otp_verify, dict):
+            token_login = otp_verify.get("data", {}).get("tokenid")
+
+        await self.bindings.update(
+            self.session, binding, step=BindingStep.TOKEN_LOGIN_FETCHED
+        )
+
+        balance_resp = await idv.get_balance_pulsa(account.msisdn)
+        balance_value = None
+        if isinstance(balance_resp, dict):
+            balance_value = (
+                balance_resp.get("res", {}).get("balance")
+                if balance_resp.get("res")
+                else None
+            )
+        try:
+            balance_int = int(balance_value) if balance_value is not None else None
+        except ValueError:
+            balance_int = None
+
+        token_location = await idv.get_token_location3(account.msisdn)
+
+        list_resp = await idv.list_produk(account.msisdn)
+        is_reseller = False
+        if isinstance(list_resp, dict) and (
+            list_resp.get("status") == "200"
+            or list_resp.get("status_msg") == "success"
+            or list_resp.get("data", {}).get("product_group", {}).get("product_type")
+            == "reseller"
+        ):
+            is_reseller = True
+
+        balance_start = (
+            balance_int if binding.balance_start is None else binding.balance_start
+        )
+        await self.bindings.update(
+            self.session,
+            binding,
+            is_reseller=is_reseller,
+            balance_start=balance_start,
+            balance_last=balance_int,
+            token_login=token_login,
+            token_location=(
+                token_location.get("token")
+                if isinstance(token_location, dict)
+                else token_location
+            ),
+        )
+        await self.accounts.update(
+            self.session,
+            account,
+            balance_last=balance_int,
+            is_reseller=is_reseller,
+        )
+
+        return {
+            "otp_request": otp_req,
+            "otp_verify": otp_verify,
+            "balance": balance_resp,
+            "token_login": token_login,
+            "token_location": token_location,
+            "list_produk": list_resp,
+            "is_reseller": is_reseller,
+        }
 
     async def get_binding(self, binding_id: int) -> Bindings:
         """Get binding by ID."""

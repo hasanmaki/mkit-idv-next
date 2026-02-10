@@ -3,6 +3,7 @@ from app.services.bindings.schemas import (
     BindingLogout,
     BindingRead,
     BindingUpdate,
+    BindingVerifyLogin,
 )
 from app.services.bindings.service import BindingService
 
@@ -12,4 +13,5 @@ __all__ = [
     "BindingLogout",
     "BindingRead",
     "BindingUpdate",
+    "BindingVerifyLogin",
 ]

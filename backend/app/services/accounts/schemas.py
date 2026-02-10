@@ -101,6 +101,7 @@ class AccountRead(BaseModel):
         None, description="PIN for the account (included per project choice)"
     )
     status: AccountStatus
+    is_reseller: bool = False
     balance_last: int | None = None
     used_count: int = 0
     last_used_at: datetime | None = None
@@ -121,6 +122,7 @@ class AccountUpdate(BaseModel):
     pin: str | None = Field(None, description="Update or clear pin")
     notes: str | None = Field(None, description="Update notes")
     status: AccountStatus | None = Field(None, description="Set account status")
+    is_reseller: bool | None = Field(None, description="Set reseller flag")
 
     model_config = {
         "coerce_numbers_to_str": True,

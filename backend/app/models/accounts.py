@@ -26,6 +26,7 @@ class Accounts(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
+    is_reseller: Mapped[bool] = mapped_column(default=False, nullable=False)
     balance_last: Mapped[int | None] = mapped_column(Integer, nullable=True)
     used_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

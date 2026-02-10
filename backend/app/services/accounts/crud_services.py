@@ -101,6 +101,7 @@ class AccountsService:
         skip: int = 0,
         limit: int = 100,
         status: AccountStatus | None = None,
+        is_reseller: bool | None = None,
         batch_id: str | None = None,
         email: str | None = None,
         msisdn: str | None = None,
@@ -109,6 +110,8 @@ class AccountsService:
         filters: dict = {}
         if status is not None:
             filters["status"] = status
+        if is_reseller is not None:
+            filters["is_reseller"] = is_reseller
         if batch_id is not None:
             filters["batch_id"] = batch_id
         if email is not None:

@@ -88,11 +88,12 @@ class IdvService:
         """Get token location3."""
         self._validate_required("username", username)
         logger.info("Get token location3", extra={"username": username})
-        return await self.client.request_json(
+        token = await self.client.request_text(
             "GET",
             "/token_location3",
             params={"username": username},
         )
+        return {"token": token}
 
     async def list_produk(self, username: str) -> dict[str, Any]:
         """List produk."""
