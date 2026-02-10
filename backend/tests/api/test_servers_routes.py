@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from app.main import app
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 
 class FakeService:
@@ -80,7 +80,9 @@ class FakeService:
 async def test_create_server_route(monkeypatch):
     monkeypatch.setattr("app.api.route_servers.ServerService", FakeService)
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:  # type: ignore[arg-type]
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:  # type: ignore[arg-type]
         payload = {"port": 9900, "base_url": "http://localhost:9900"}
         r = await ac.post("/v1/servers/", json=payload)
         assert r.status_code == 201
@@ -92,7 +94,7 @@ async def test_create_server_route(monkeypatch):
 async def test_list_get_update_delete_routes(monkeypatch):
     monkeypatch.setattr("app.api.route_servers.ServerService", FakeService)
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:  # type: ignore[arg-type]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:  # type: ignore[arg-type]
         r = await ac.get("/v1/servers/")
         assert r.status_code == 200
         assert isinstance(r.json(), list)
