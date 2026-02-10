@@ -93,3 +93,19 @@ class AppValidationError(AppBaseExceptionError):
     DEFAULT_MESSAGE = "Data tidak valid."
     DEFAULT_STATUS_CODE = 400
     DEFAULT_CODE = "validation_error"
+
+
+class AppExternalServiceError(AppBaseExceptionError):
+    """External service error (bad gateway or upstream failure)."""
+
+    DEFAULT_MESSAGE = "Layanan eksternal mengalami kendala."
+    DEFAULT_STATUS_CODE = 502
+    DEFAULT_CODE = "external_service_error"
+
+
+class AppExternalServiceTimeout(AppBaseExceptionError):
+    """External service timeout."""
+
+    DEFAULT_MESSAGE = "Layanan eksternal tidak merespons tepat waktu."
+    DEFAULT_STATUS_CODE = 504
+    DEFAULT_CODE = "external_service_timeout"

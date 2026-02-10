@@ -1,3 +1,5 @@
+"""logging configuration using Loguru."""
+
 from __future__ import annotations
 
 import logging

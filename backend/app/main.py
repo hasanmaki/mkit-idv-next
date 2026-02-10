@@ -47,7 +47,7 @@ app.add_middleware(
 app.add_middleware(TraceIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
-app.include_router(route_servers.router, prefix="/v1/servers")
+app.include_router(route_servers.router, tags=["servers"], prefix="/v1/servers")
 # app.include_router(bindings.router, prefix="/v1/bindings")
 
 # Register exception handlers setelah middleware
