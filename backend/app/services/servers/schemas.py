@@ -33,24 +33,28 @@ class ServerCreate(BaseModel):
         ge=1,
         le=30,
         description="Request timeout in seconds",
+        examples=[10],
     )
     retries: int = Field(
         3,
         ge=0,
         le=10,
         description="Number of retry attempts on failure",
+        examples=[3],
     )
     wait_between_retries: int = Field(
         1,
         ge=0,
         le=10,
         description="Seconds to wait between retries",
+        examples=[1],
     )
     max_requests_queued: int = Field(
         5,
         ge=1,
         le=20,
         description="Max concurrent requests allowed",
+        examples=[5],
     )
     is_active: bool = Field(
         True,
@@ -60,11 +64,13 @@ class ServerCreate(BaseModel):
         None,
         max_length=255,
         description="Additional notes or metadata",
+        examples=["server pool A"],
     )
     device_id: str | None = Field(
         None,
         max_length=100,
         description="Optional device id for this server instance",
+        examples=["0ee0deeb75df0bca"],
     )
 
     model_config = {"use_enum_values": True}
@@ -83,14 +89,14 @@ class ServerCreate(BaseModel):
 class ServerUpdate(BaseModel):
     """Schema for updating an existing server."""
 
-    description: str | None = Field(None, max_length=100)
-    timeout: int | None = Field(None, ge=1, le=30)
-    retries: int | None = Field(None, ge=0, le=10)
-    wait_between_retries: int | None = Field(None, ge=0, le=10)
-    max_requests_queued: int | None = Field(None, ge=1, le=20)
+    description: str | None = Field(None, max_length=100, examples=["myim3 Bot #2"])
+    timeout: int | None = Field(None, ge=1, le=30, examples=[12])
+    retries: int | None = Field(None, ge=0, le=10, examples=[2])
+    wait_between_retries: int | None = Field(None, ge=0, le=10, examples=[1])
+    max_requests_queued: int | None = Field(None, ge=1, le=20, examples=[8])
     is_active: bool | None = None
-    notes: str | None = Field(None, max_length=255)
-    device_id: str | None = Field(None, max_length=100)
+    notes: str | None = Field(None, max_length=255, examples=["maintenance"])
+    device_id: str | None = Field(None, max_length=100, examples=["0ee0deeb75df0bca"])
 
     model_config = {"use_enum_values": True}
 

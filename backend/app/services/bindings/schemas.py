@@ -13,9 +13,11 @@ from app.models.steps import BindingStep
 class BindingCreate(BaseModel):
     """Create a new binding between server and account."""
 
-    server_id: int = Field(..., description="Server ID to bind")
-    account_id: int = Field(..., description="Account ID to bind")
-    balance_start: int | None = Field(None, description="Initial balance snapshot")
+    server_id: int = Field(..., description="Server ID to bind", examples=[1])
+    account_id: int = Field(..., description="Account ID to bind", examples=[100])
+    balance_start: int | None = Field(
+        None, description="Initial balance snapshot", examples=[7851]
+    )
 
     model_config = {"use_enum_values": True}
 
@@ -23,14 +25,14 @@ class BindingCreate(BaseModel):
 class BindingUpdate(BaseModel):
     """Update binding step or balance."""
 
-    step: BindingStep | None = None
-    balance_last: int | None = None
-    is_reseller: bool | None = None
-    last_error_code: str | None = None
-    last_error_message: str | None = None
-    token_login: str | None = None
-    token_location: str | None = None
-    device_id: str | None = None
+    step: BindingStep | None = Field(None, examples=[BindingStep.OTP_VERIFIED])
+    balance_last: int | None = Field(None, examples=[7500])
+    is_reseller: bool | None = Field(None, examples=[True])
+    last_error_code: str | None = Field(None, examples=["otp_failed"])
+    last_error_message: str | None = Field(None, examples=["Invalid OTP"])
+    token_login: str | None = Field(None, examples=["eyJhbGciOiJIUzUxMiJ9..."])
+    token_location: str | None = Field(None, examples=["eyJ0eXAiOiJKV1QiLCJhb..."])
+    device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
 
     model_config = {"use_enum_values": True}
 
@@ -38,9 +40,9 @@ class BindingUpdate(BaseModel):
 class BindingLogout(BaseModel):
     """Logout/unbind a binding."""
 
-    last_error_code: str | None = None
-    last_error_message: str | None = None
-    account_status: AccountStatus | None = None
+    last_error_code: str | None = Field(None, examples=["manual_logout"])
+    last_error_message: str | None = Field(None, examples=["User requested"])
+    account_status: AccountStatus | None = Field(None, examples=[AccountStatus.EXHAUSTED])
 
     model_config = {"use_enum_values": True}
 
@@ -48,8 +50,8 @@ class BindingLogout(BaseModel):
 class BindingVerifyLogin(BaseModel):
     """Payload to verify login and reseller status."""
 
-    otp: str = Field(..., description="OTP code for verification")
-    pin: str | None = Field(None, description="Optional PIN override")
+    otp: str = Field(..., description="OTP code for verification", examples=["123456"])
+    pin: str | None = Field(None, description="Optional PIN override", examples=["1234"])
 
     model_config = {"use_enum_values": True}
 

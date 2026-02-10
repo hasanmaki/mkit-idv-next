@@ -19,9 +19,17 @@ from app.models.statuses import AccountStatus
 class AccountBase(BaseModel):
     """Base schema for account fields shared across create/update operations."""
 
-    msisdn: str = Field(..., description="Phone number associated with the account")
-    pin: str | None = Field(None, description="Optional PIN for the account")
-    notes: str | None = Field(None, description="Additional notes about the account")
+    msisdn: str = Field(
+        ...,
+        description="Phone number associated with the account",
+        examples=["085777076575"],
+    )
+    pin: str | None = Field(
+        None, description="Optional PIN for the account", examples=["1234"]
+    )
+    notes: str | None = Field(
+        None, description="Additional notes about the account", examples=["myim3 #1"]
+    )
 
     model_config = {
         "coerce_numbers_to_str": True,
@@ -43,8 +51,16 @@ class AccountBase(BaseModel):
 class AccountCreateSingle(AccountBase):
     """Schema for creating a single account."""
 
-    email: str = Field(..., description="Email address associated with the account")
-    batch_id: str = Field(..., description="Batch identifier for grouping accounts")
+    email: str = Field(
+        ...,
+        description="Email address associated with the account",
+        examples=["user@example.com"],
+    )
+    batch_id: str = Field(
+        ...,
+        description="Batch identifier for grouping accounts",
+        examples=["batch-2026-02-10"],
+    )
 
     model_config = {
         "coerce_numbers_to_str": True,
@@ -62,7 +78,9 @@ class AccountCreateBulk(BaseModel):
     """
 
     msisdns: list[str] = Field(
-        ..., description="List of phone numbers (msisdn) to create"
+        ...,
+        description="List of phone numbers (msisdn) to create",
+        examples=[["085777076575", "08156142731"]],
     )
 
     @field_validator("msisdns", mode="before")
@@ -81,8 +99,16 @@ class AccountCreateBulk(BaseModel):
             out.append(s)
         return out
 
-    email: str = Field(..., description="Email address to associate with all accounts")
-    batch_id: str = Field(..., description="Batch identifier for grouping accounts")
+    email: str = Field(
+        ...,
+        description="Email address to associate with all accounts",
+        examples=["user@example.com"],
+    )
+    batch_id: str = Field(
+        ...,
+        description="Batch identifier for grouping accounts",
+        examples=["batch-2026-02-10"],
+    )
     pin: str | None = Field(
         None, description="Optional default PIN for all new accounts"
     )
@@ -123,9 +149,11 @@ class AccountRead(BaseModel):
 class AccountUpdate(BaseModel):
     """Schema used to update an account's mutable fields."""
 
-    email: str | None = Field(None, description="Update email if provided")
-    pin: str | None = Field(None, description="Update or clear pin")
-    notes: str | None = Field(None, description="Update notes")
+    email: str | None = Field(
+        None, description="Update email if provided", examples=["new@example.com"]
+    )
+    pin: str | None = Field(None, description="Update or clear pin", examples=["1234"])
+    notes: str | None = Field(None, description="Update notes", examples=["testing"])
     status: AccountStatus | None = Field(None, description="Set account status")
     is_reseller: bool | None = Field(None, description="Set reseller flag")
     last_device_id: str | None = Field(None, description="Update last device id")
