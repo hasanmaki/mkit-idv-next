@@ -56,6 +56,40 @@ class TransactionSnapshotUpdate(BaseModel):
     model_config = {"use_enum_values": True}
 
 
+class TransactionStartRequest(BaseModel):
+    """Start transaction orchestration."""
+
+    binding_id: int = Field(..., description="Binding ID")
+    product_id: str = Field(..., description="Product ID")
+    email: str = Field(..., description="Email")
+    limit_harga: int = Field(..., description="Limit harga")
+    otp_required: bool = Field(False, description="OTP required for first trx")
+
+    model_config = {"use_enum_values": True}
+
+
+class TransactionOtpRequest(BaseModel):
+    """OTP input for transaction."""
+
+    otp: str = Field(..., description="OTP code")
+
+    model_config = {"use_enum_values": True}
+
+
+class TransactionContinueRequest(BaseModel):
+    """Continue transaction (after no OTP or retry status)."""
+
+    model_config = {"use_enum_values": True}
+
+
+class TransactionStopRequest(BaseModel):
+    """Stop/abort transaction manually."""
+
+    reason: str | None = None
+
+    model_config = {"use_enum_values": True}
+
+
 class TransactionCreateRequest(BaseModel):
     """Create transaction + optional snapshot in one request."""
 

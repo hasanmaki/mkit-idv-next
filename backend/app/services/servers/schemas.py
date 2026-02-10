@@ -67,6 +67,8 @@ class ServerCreate(BaseModel):
         description="Optional device id for this server instance",
     )
 
+    model_config = {"use_enum_values": True}
+
     @field_validator("base_url", mode="before")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
@@ -90,6 +92,8 @@ class ServerUpdate(BaseModel):
     notes: str | None = Field(None, max_length=255)
     device_id: str | None = Field(None, max_length=100)
 
+    model_config = {"use_enum_values": True}
+
 
 class ServerResponse(BaseModel):
     """Schema for server response."""
@@ -107,6 +111,8 @@ class ServerResponse(BaseModel):
     device_id: str | None
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True, "use_enum_values": True}
 
     model_config = {
         "from_attributes": True,

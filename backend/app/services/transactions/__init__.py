@@ -6,6 +6,10 @@ from app.services.transactions.schemas import (
     TransactionSnapshotRead,
     TransactionSnapshotUpdate,
     TransactionStatusUpdate,
+    TransactionStartRequest,
+    TransactionOtpRequest,
+    TransactionContinueRequest,
+    TransactionStopRequest,
 )
 from app.services.transactions.service import TransactionService
 
@@ -18,4 +22,8 @@ __all__ = [
     "TransactionSnapshotRead",
     "TransactionSnapshotUpdate",
     "TransactionStatusUpdate",
+    "TransactionStartRequest",
+    "TransactionOtpRequest",
+    "TransactionContinueRequest",
+    "TransactionStopRequest",
 ]

@@ -17,6 +17,8 @@ class BindingCreate(BaseModel):
     account_id: int = Field(..., description="Account ID to bind")
     balance_start: int | None = Field(None, description="Initial balance snapshot")
 
+    model_config = {"use_enum_values": True}
+
 
 class BindingUpdate(BaseModel):
     """Update binding step or balance."""
@@ -30,6 +32,8 @@ class BindingUpdate(BaseModel):
     token_location: str | None = None
     device_id: str | None = None
 
+    model_config = {"use_enum_values": True}
+
 
 class BindingLogout(BaseModel):
     """Logout/unbind a binding."""
@@ -38,12 +42,16 @@ class BindingLogout(BaseModel):
     last_error_message: str | None = None
     account_status: AccountStatus | None = None
 
+    model_config = {"use_enum_values": True}
+
 
 class BindingVerifyLogin(BaseModel):
     """Payload to verify login and reseller status."""
 
     otp: str = Field(..., description="OTP code for verification")
     pin: str | None = Field(None, description="Optional PIN override")
+
+    model_config = {"use_enum_values": True}
 
 
 class BindingRead(BaseModel):
@@ -67,4 +75,4 @@ class BindingRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "use_enum_values": True}

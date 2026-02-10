@@ -6,13 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppNotFoundError
 from app.database.session import get_db_session
 from app.models.transactions import TransactionSnapshots, Transactions
+from app.models.transaction_statuses import TransactionStatus
 from app.services.transactions import (
     TransactionCreateRequest,
+    TransactionContinueRequest,
+    TransactionOtpRequest,
     TransactionRead,
     TransactionService,
     TransactionSnapshotRead,
     TransactionSnapshotUpdate,
+    TransactionStartRequest,
     TransactionStatusUpdate,
+    TransactionStopRequest,
 )
 
 router = APIRouter()
@@ -29,11 +34,49 @@ async def create_transaction(
     )
 
 
+@router.post("/start", response_model=TransactionRead)
+async def start_transaction(
+    payload: TransactionStartRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> Transactions:
+    service = TransactionService(session)
+    return await service.start_transaction(payload)
+
+
+@router.post("/{transaction_id}/otp", response_model=TransactionRead)
+async def submit_otp(
+    transaction_id: int,
+    payload: TransactionOtpRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> Transactions:
+    service = TransactionService(session)
+    return await service.submit_otp(transaction_id, payload)
+
+
+@router.post("/{transaction_id}/continue", response_model=TransactionRead)
+async def continue_transaction(
+    transaction_id: int,
+    session: AsyncSession = Depends(get_db_session),
+) -> Transactions:
+    service = TransactionService(session)
+    return await service.continue_transaction(transaction_id)
+
+
+@router.post("/{transaction_id}/stop", response_model=TransactionRead)
+async def stop_transaction(
+    transaction_id: int,
+    payload: TransactionStopRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> Transactions:
+    service = TransactionService(session)
+    return await service.stop_transaction(transaction_id, payload)
+
+
 @router.get("/", response_model=list[TransactionRead])
 async def list_transactions(
     skip: int = 0,
     limit: int = 100,
-    status_filter: str | None = None,
+    status_filter: TransactionStatus | None = None,
     binding_id: int | None = None,
     account_id: int | None = None,
     server_id: int | None = None,
