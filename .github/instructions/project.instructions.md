@@ -27,11 +27,11 @@ Setiap server berjalan di port berbeda (`localhost:9900`–`localhost:9919`) dan
 
 1. **Pasang MSISDN baru** (account) ke server kosong/tersedia
 2. **Jalankan proses login**:
-   - Request OTP → Verifikasi OTP → Dapatkan token & saldo
+   - Request OTP → Verifikasi OTP → Ambil token login → Cek saldo → Ambil token lokasi
 3. **Verifikasi reseller**:
    - Cek daftar produk → jika tidak ada, MSISDN ini non-reseller
 4. **Eksekusi transaksi**:
-   - Transaksi pertama: butuh OTP khusus
+   - Transaksi pertama: butuh OTP khusus (tergantung device_id)
    - Transaksi berikutnya: otomatis sampai pulsa habis
 5. **Logout & ganti MSISDN**:
    - Setelah pulsa habis, **logout** binding lama
@@ -54,8 +54,8 @@ Setiap server berjalan di port berbeda (`localhost:9900`–`localhost:9919`) dan
 ### **Database Schema**
 
 - **`servers`**: Daftar 20 resource server (port, konfigurasi, status)
-- **`accounts`**: Daftar MSISDN + email, dikelompokkan per `batch_id`
-- **`bindings`**: Sesi pemakaian account pada server (riwayat per sesi)
+- **`accounts`**: Daftar MSISDN + email, dikelompokkan per `batch_id` + status + reseller flag
+- **`bindings`**: Sesi pemakaian account pada server (riwayat per sesi) + token login/location
 - **`transactions`**: Riwayat transaksi per binding (audit lengkap)
 
 ### **State Management**
@@ -72,6 +72,12 @@ BOUND
 ```
 
 Ketika MSISDN diganti, binding lama di-`LOGGED_OUT`, binding baru dibuat di `BOUND`.
+
+Token flow saat login:
+
+```
+OTP → token_login (verifyOtp) → balance_start → token_location
+```
 
 ---
 
@@ -105,3 +111,5 @@ Ketika MSISDN diganti, binding lama di-`LOGGED_OUT`, binding baru dibuat di `BOU
 - `accounts` memakai **`batch_id`** untuk grouping input (misal 1000 nomor per batch).
 - Rekap saldo per batch dihitung **on-demand** dari `bindings` dan `transactions`.
 - `transactions` wajib menyimpan `msisdn/account`, `trx_id`, `pulsa_awal`, `pulsa_akhir`, dan detail transaksi lain.
+- `servers.device_id` disimpan untuk kebutuhan OTP transaksi (belum diaktifkan logikanya).
+- `bindings` menyimpan `token_login` dan `token_location` untuk debug.
