@@ -5,11 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppNotFoundError
 from app.database.session import get_db_session
-from app.models.transactions import TransactionSnapshots, Transactions
 from app.models.transaction_statuses import TransactionStatus
+from app.models.transactions import Transactions, TransactionSnapshots
 from app.services.transactions import (
     TransactionCreateRequest,
-    TransactionContinueRequest,
     TransactionOtpRequest,
     TransactionRead,
     TransactionService,
@@ -132,9 +131,7 @@ async def get_transaction_snapshot(
     session: AsyncSession = Depends(get_db_session),
 ) -> TransactionSnapshots:
     service = TransactionService(session)
-    snapshot = await service.snapshots.get_by(
-        session, transaction_id=transaction_id
-    )
+    snapshot = await service.snapshots.get_by(session, transaction_id=transaction_id)
     if not snapshot:
         raise AppNotFoundError(
             message="Snapshot tidak ditemukan.",

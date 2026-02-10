@@ -91,7 +91,6 @@ class BindingService:
             status=AccountStatus.ACTIVE,
             used_count=account.used_count + 1,
             last_used_at=datetime.utcnow(),
-            last_device_id=server.device_id,
         )
 
         logger.info(

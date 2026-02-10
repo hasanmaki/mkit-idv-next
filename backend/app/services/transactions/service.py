@@ -9,8 +9,8 @@ from app.core.log_config import get_logger
 from app.models.accounts import Accounts
 from app.models.bindings import Bindings
 from app.models.servers import Servers
-from app.models.transactions import TransactionSnapshots, Transactions
 from app.models.transaction_statuses import TransactionOtpStatus, TransactionStatus
+from app.models.transactions import Transactions, TransactionSnapshots
 from app.repos.account_repo import AccountRepository
 from app.repos.binding_repo import BindingRepository
 from app.repos.server_repo import ServerRepository
@@ -18,16 +18,16 @@ from app.repos.transaction_repo import (
     TransactionRepository,
     TransactionSnapshotRepository,
 )
+from app.services.idv import IdvService
 from app.services.transactions.schemas import (
     TransactionCreate,
+    TransactionOtpRequest,
     TransactionSnapshotCreate,
     TransactionSnapshotUpdate,
-    TransactionStatusUpdate,
     TransactionStartRequest,
-    TransactionOtpRequest,
+    TransactionStatusUpdate,
     TransactionStopRequest,
 )
-from app.services.idv import IdvService
 
 logger = get_logger("service.transactions")
 
@@ -141,7 +141,9 @@ class TransactionService:
             return snapshot
 
         updated = await self.snapshots.update(self.session, snapshot, **update_data)
-        logger.info("Transaction snapshot updated", extra={"transaction_id": transaction_id})
+        logger.info(
+            "Transaction snapshot updated", extra={"transaction_id": transaction_id}
+        )
         return updated
 
     async def get_transaction(self, transaction_id: int) -> Transactions:
@@ -194,46 +196,10 @@ class TransactionService:
 
     async def start_transaction(self, payload: TransactionStartRequest) -> Transactions:
         """Start transaction flow: balance_start -> trx_idv -> status_idv -> balance_end."""
-        binding = await self.bindings.get(self.session, payload.binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding ID {payload.binding_id} tidak ditemukan.",
-                error_code="binding_not_found",
-                context={"binding_id": payload.binding_id},
-            )
-
-        account = await self.accounts.get(self.session, binding.account_id)
-        if not account:
-            raise AppNotFoundError(
-                message=f"Account ID {binding.account_id} tidak ditemukan.",
-                error_code="account_not_found",
-                context={"account_id": binding.account_id},
-            )
-
-        server = await self.servers.get(self.session, binding.server_id)
-        if not server:
-            raise AppNotFoundError(
-                message=f"Server ID {binding.server_id} tidak ditemukan.",
-                error_code="server_not_found",
-                context={"server_id": binding.server_id},
-            )
-
+        binding, account, server = await self._load_binding_context(payload.binding_id)
         idv = IdvService.from_server(server)
 
-        balance_start_resp = await idv.get_balance_pulsa(account.msisdn)
-        balance_start = None
-        if isinstance(balance_start_resp, dict):
-            balance_start = (
-                balance_start_resp.get("res", {}).get("balance")
-                if balance_start_resp.get("res")
-                else None
-            )
-        try:
-            balance_start_int = (
-                int(balance_start) if balance_start is not None else None
-            )
-        except ValueError:
-            balance_start_int = None
+        balance_start_int = await self._fetch_balance_int(idv, account.msisdn)
 
         trx_resp = await idv.trx_voucher_idv(
             account.msisdn,
@@ -241,16 +207,7 @@ class TransactionService:
             payload.email,
             payload.limit_harga,
         )
-        trx_id = None
-        t_id = None
-        is_success = None
-        if isinstance(trx_resp, dict):
-            res = trx_resp.get("res", {})
-            data = res.get("data", {}) if res else {}
-            trx_id = data.get("trx_id")
-            t_id = data.get("t_id")
-            is_success = data.get("is_success")
-
+        trx_id, t_id, is_success = self._parse_trx_response(trx_resp)
         if not trx_id:
             raise AppValidationError(
                 message="trx_id tidak ditemukan pada response transaksi.",
@@ -258,11 +215,7 @@ class TransactionService:
                 context={"response": trx_resp},
             )
 
-        otp_required = (
-            account.last_device_id != binding.device_id
-            if account.last_device_id and binding.device_id
-            else True
-        )
+        otp_required = self._compute_otp_required(account.last_device_id, binding.device_id)
 
         trx = await self.create_transaction(
             TransactionCreate(
@@ -283,33 +236,10 @@ class TransactionService:
         )
 
         status_resp = await idv.status_trx(account.msisdn, str(trx_id))
-        is_success_status = None
-        voucher_code = None
-        if isinstance(status_resp, dict):
-            res = status_resp.get("res", {})
-            data = res.get("data", {}) if res else {}
-            is_success_status = data.get("is_success")
-            voucher_code = data.get("voucher")
+        is_success_status, voucher_code = self._parse_status_response(status_resp)
+        status_value = self._compute_status(is_success_status, voucher_code)
 
-        if is_success_status == 2 and voucher_code:
-            status_value = TransactionStatus.SUKSES
-        elif is_success_status == 2 and not voucher_code:
-            status_value = TransactionStatus.SUSPECT
-        else:
-            status_value = TransactionStatus.PROCESSING
-
-        balance_end_resp = await idv.get_balance_pulsa(account.msisdn)
-        balance_end = None
-        if isinstance(balance_end_resp, dict):
-            balance_end = (
-                balance_end_resp.get("res", {}).get("balance")
-                if balance_end_resp.get("res")
-                else None
-            )
-        try:
-            balance_end_int = int(balance_end) if balance_end is not None else None
-        except ValueError:
-            balance_end_int = None
+        balance_end_int = await self._fetch_balance_int(idv, account.msisdn)
 
         await self.update_status(
             trx.id,
@@ -319,6 +249,7 @@ class TransactionService:
                 if is_success_status is not None
                 else None,
                 voucher_code=voucher_code,
+                error_message=None,
                 otp_status=TransactionOtpStatus.PENDING
                 if status_value == TransactionStatus.PROCESSING
                 else None,
@@ -334,18 +265,15 @@ class TransactionService:
 
         return await self.get_transaction(trx.id)
 
-    async def submit_otp(
-        self, transaction_id: int, payload: TransactionOtpRequest
-    ) -> Transactions:
-        """Submit OTP and re-check status."""
-        trx = await self.get_transaction(transaction_id)
-        binding = await self.bindings.get(self.session, trx.binding_id)
+    async def _load_binding_context(self, binding_id: int) -> tuple[Bindings, Accounts, Servers]:
+        binding = await self.bindings.get(self.session, binding_id)
         if not binding:
             raise AppNotFoundError(
-                message=f"Binding ID {trx.binding_id} tidak ditemukan.",
+                message=f"Binding ID {binding_id} tidak ditemukan.",
                 error_code="binding_not_found",
-                context={"binding_id": trx.binding_id},
+                context={"binding_id": binding_id},
             )
+
         account = await self.accounts.get(self.session, binding.account_id)
         if not account:
             raise AppNotFoundError(
@@ -353,6 +281,7 @@ class TransactionService:
                 error_code="account_not_found",
                 context={"account_id": binding.account_id},
             )
+
         server = await self.servers.get(self.session, binding.server_id)
         if not server:
             raise AppNotFoundError(
@@ -360,11 +289,37 @@ class TransactionService:
                 error_code="server_not_found",
                 context={"server_id": binding.server_id},
             )
+        return binding, account, server
 
-        idv = IdvService.from_server(server)
-        otp_resp = await idv.otp_trx(account.msisdn, payload.otp)
+    async def _fetch_balance_int(self, idv: IdvService, msisdn: str) -> int | None:
+        balance_resp = await idv.get_balance_pulsa(msisdn)
+        balance_value = None
+        if isinstance(balance_resp, dict):
+            balance_value = (
+                balance_resp.get("res", {}).get("balance")
+                if balance_resp.get("res")
+                else None
+            )
+        try:
+            return int(balance_value) if balance_value is not None else None
+        except ValueError:
+            return None
 
-        status_resp = await idv.status_trx(account.msisdn, trx.trx_id)
+    @staticmethod
+    def _parse_trx_response(trx_resp: dict | None) -> tuple[str | None, str | None, int | None]:
+        trx_id = None
+        t_id = None
+        is_success = None
+        if isinstance(trx_resp, dict):
+            res = trx_resp.get("res", {})
+            data = res.get("data", {}) if res else {}
+            trx_id = data.get("trx_id")
+            t_id = data.get("t_id")
+            is_success = data.get("is_success")
+        return trx_id, t_id, is_success
+
+    @staticmethod
+    def _parse_status_response(status_resp: dict | None) -> tuple[int | None, str | None]:
         is_success_status = None
         voucher_code = None
         if isinstance(status_resp, dict):
@@ -372,26 +327,38 @@ class TransactionService:
             data = res.get("data", {}) if res else {}
             is_success_status = data.get("is_success")
             voucher_code = data.get("voucher")
+        return is_success_status, voucher_code
 
+    @staticmethod
+    def _compute_status(is_success_status: int | None, voucher_code: str | None) -> TransactionStatus:
         if is_success_status == 2 and voucher_code:
-            status_value = TransactionStatus.SUKSES
-        elif is_success_status == 2 and not voucher_code:
-            status_value = TransactionStatus.SUSPECT
-        else:
-            status_value = TransactionStatus.GAGAL
+            return TransactionStatus.SUKSES
+        if is_success_status == 2 and not voucher_code:
+            return TransactionStatus.SUSPECT
+        return TransactionStatus.PROCESSING
 
-        balance_end_resp = await idv.get_balance_pulsa(account.msisdn)
-        balance_end = None
-        if isinstance(balance_end_resp, dict):
-            balance_end = (
-                balance_end_resp.get("res", {}).get("balance")
-                if balance_end_resp.get("res")
-                else None
-            )
-        try:
-            balance_end_int = int(balance_end) if balance_end is not None else None
-        except ValueError:
-            balance_end_int = None
+    @staticmethod
+    def _compute_otp_required(
+        last_device_id: str | None, current_device_id: str | None
+    ) -> bool:
+        if last_device_id and current_device_id:
+            return last_device_id != current_device_id
+        return True
+
+    async def submit_otp(
+        self, transaction_id: int, payload: TransactionOtpRequest
+    ) -> Transactions:
+        """Submit OTP and re-check status."""
+        trx = await self.get_transaction(transaction_id)
+        binding, account, server = await self._load_binding_context(trx.binding_id)
+        idv = IdvService.from_server(server)
+
+        otp_resp = await idv.otp_trx(account.msisdn, payload.otp)
+
+        status_resp = await idv.status_trx(account.msisdn, trx.trx_id)
+        is_success_status, voucher_code = self._parse_status_response(status_resp)
+        status_value = self._compute_status_after_otp(is_success_status, voucher_code)
+        balance_end_int = await self._fetch_balance_int(idv, account.msisdn)
 
         await self.update_status(
             trx.id,
@@ -404,11 +371,14 @@ class TransactionService:
                 otp_status=TransactionOtpStatus.SUCCESS
                 if status_value in (TransactionStatus.SUKSES, TransactionStatus.SUSPECT)
                 else TransactionOtpStatus.FAILED,
-                error_message=str(otp_resp.get("res", {}).get("message"))
-                if isinstance(otp_resp, dict)
-                else None,
+                error_message=self._extract_otp_error(otp_resp),
             ),
         )
+        if self._is_otp_ok(otp_resp) and binding.device_id:
+            await self.accounts.update(
+                self.session, account, last_device_id=binding.device_id
+            )
+
         await self.update_snapshot(
             trx.id,
             TransactionSnapshotUpdate(
@@ -428,64 +398,22 @@ class TransactionService:
             trx.id,
             TransactionStatusUpdate(
                 status=TransactionStatus.GAGAL,
+                is_success=None,
+                voucher_code=None,
                 error_message=payload.reason,
+                otp_status=None,
             ),
         )
 
     async def continue_transaction(self, transaction_id: int) -> Transactions:
         """Continue transaction: re-check status_idv and balance_end."""
         trx = await self.get_transaction(transaction_id)
-        binding = await self.bindings.get(self.session, trx.binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding ID {trx.binding_id} tidak ditemukan.",
-                error_code="binding_not_found",
-                context={"binding_id": trx.binding_id},
-            )
-        account = await self.accounts.get(self.session, binding.account_id)
-        if not account:
-            raise AppNotFoundError(
-                message=f"Account ID {binding.account_id} tidak ditemukan.",
-                error_code="account_not_found",
-                context={"account_id": binding.account_id},
-            )
-        server = await self.servers.get(self.session, binding.server_id)
-        if not server:
-            raise AppNotFoundError(
-                message=f"Server ID {binding.server_id} tidak ditemukan.",
-                error_code="server_not_found",
-                context={"server_id": binding.server_id},
-            )
-
+        binding, account, server = await self._load_binding_context(trx.binding_id)
         idv = IdvService.from_server(server)
         status_resp = await idv.status_trx(account.msisdn, trx.trx_id)
-        is_success_status = None
-        voucher_code = None
-        if isinstance(status_resp, dict):
-            res = status_resp.get("res", {})
-            data = res.get("data", {}) if res else {}
-            is_success_status = data.get("is_success")
-            voucher_code = data.get("voucher")
-
-        if is_success_status == 2 and voucher_code:
-            status_value = TransactionStatus.SUKSES
-        elif is_success_status == 2 and not voucher_code:
-            status_value = TransactionStatus.SUSPECT
-        else:
-            status_value = TransactionStatus.GAGAL
-
-        balance_end_resp = await idv.get_balance_pulsa(account.msisdn)
-        balance_end = None
-        if isinstance(balance_end_resp, dict):
-            balance_end = (
-                balance_end_resp.get("res", {}).get("balance")
-                if balance_end_resp.get("res")
-                else None
-            )
-        try:
-            balance_end_int = int(balance_end) if balance_end is not None else None
-        except ValueError:
-            balance_end_int = None
+        is_success_status, voucher_code = self._parse_status_response(status_resp)
+        status_value = self._compute_status_after_otp(is_success_status, voucher_code)
+        balance_end_int = await self._fetch_balance_int(idv, account.msisdn)
 
         await self.update_status(
             trx.id,
@@ -495,6 +423,7 @@ class TransactionService:
                 if is_success_status is not None
                 else None,
                 voucher_code=voucher_code,
+                error_message=None,
                 otp_status=trx.otp_status,
             ),
         )
@@ -507,3 +436,26 @@ class TransactionService:
         )
 
         return await self.get_transaction(trx.id)
+
+    @staticmethod
+    def _compute_status_after_otp(
+        is_success_status: int | None, voucher_code: str | None
+    ) -> TransactionStatus:
+        if is_success_status == 2 and voucher_code:
+            return TransactionStatus.SUKSES
+        if is_success_status == 2 and not voucher_code:
+            return TransactionStatus.SUSPECT
+        return TransactionStatus.GAGAL
+
+    @staticmethod
+    def _extract_otp_error(otp_resp: dict | None) -> str | None:
+        if isinstance(otp_resp, dict):
+            return str(otp_resp.get("res", {}).get("message"))
+        return None
+
+    @staticmethod
+    def _is_otp_ok(otp_resp: dict | None) -> bool:
+        if not isinstance(otp_resp, dict):
+            return False
+        res = otp_resp.get("res", {})
+        return res.get("status") == "200" or res.get("status_msg") == "success"
