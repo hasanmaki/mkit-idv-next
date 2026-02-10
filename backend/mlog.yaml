@@ -27,7 +27,7 @@ handlers:
 
 extra:
   context: "mkit"
-  trace_id: "-"
+  trace_id: "no-trace"
   layer: "app"
 
 activation:

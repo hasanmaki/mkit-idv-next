@@ -59,7 +59,7 @@ class AppSettings(BaseSettings):
 
     app_name: str = "mkit-indosat voucher service"
     app_version: str = "0.1.0"
-    debug: bool = False
+    debug: bool = True
     db: DatabaseConfig = Field(default_factory=DatabaseConfig)
     cors: CorsConfig = Field(default_factory=CorsConfig)
     httpx: HttpxConfig = Field(default_factory=HttpxConfig)

@@ -2,6 +2,7 @@
 
 from uuid import uuid4
 
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -19,6 +20,10 @@ class TraceIDMiddleware(BaseHTTPMiddleware):
             or uuid4().hex
         )
         request.state.trace_id = trace_id
+        # Make a request-scoped logger available that already binds trace_id
+        request.state.logger = logger.bind(trace_id=trace_id)
+        # debug to help troubleshooting middleware ordering
+        logger.bind(trace_id=trace_id).debug("TraceIDMiddleware set trace_id")
         token = trace_id_ctx.set(trace_id)
 
         try:

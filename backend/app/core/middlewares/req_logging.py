@@ -7,6 +7,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from app.core.log_config import trace_id_ctx
+
 SLOW_REQUEST_MS = 1000
 
 
@@ -20,7 +22,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response: Response = await call_next(request)
         except Exception:
             duration_ms = int((time.perf_counter() - start) * 1000)
+            # Try several sources for trace id: request.state, headers, or context var
+            trace_id = (
+                getattr(request.state, "trace_id", None)
+                or request.headers.get("X-Trace-Id")
+                or trace_id_ctx.get()
+            )
             logger.bind(
+                trace_id=trace_id,
                 method=request.method,
                 path=request.url.path,
                 duration_ms=duration_ms,
@@ -40,8 +49,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             "user_agent": user_agent,
         }
 
-        # Gunakan trace_id dari context (sudah di-set oleh TraceIDMiddleware)
-        bound = logger.bind(**log_data)
+        # Prefer a request-scoped logger if TraceIDMiddleware added it, otherwise bind trace id explicitly
+        trace_id = (
+            getattr(request.state, "trace_id", None)
+            or request.headers.get("X-Trace-Id")
+            or trace_id_ctx.get()
+        )
+        if hasattr(request.state, "logger"):
+            bound = request.state.logger.bind(**log_data)
+        else:
+            bound = logger.bind(trace_id=trace_id, **log_data)
 
         if duration_ms > SLOW_REQUEST_MS:
             bound.warning("SLOW_REQUEST")
