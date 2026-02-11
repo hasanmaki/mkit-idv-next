@@ -1,6 +1,7 @@
 """Service layer for transactions."""
 
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,8 @@ from app.services.idv import IdvService
 from app.services.transactions.schemas import (
     TransactionCreate,
     TransactionOtpRequest,
+    TransactionPauseRequest,
+    TransactionResumeRequest,
     TransactionSnapshotCreate,
     TransactionSnapshotUpdate,
     TransactionStartRequest,
@@ -421,6 +424,120 @@ class TransactionService:
             ),
         )
 
+    async def pause_transaction(
+        self, transaction_id: int, payload: TransactionPauseRequest
+    ) -> Transactions:
+        """Pause active transaction.
+
+        Args:
+            transaction_id: Transaction ID to pause
+            payload: Pause request with reason
+
+        Returns:
+            Updated transaction with PAUSED status
+
+        Raises:
+            AppNotFoundError: If transaction not found
+            AppValidationError: If transaction cannot be paused from current status
+        """
+        trx = await self.get_transaction(transaction_id)
+
+        # Validate: can only pause PROCESSING or RESUMED transactions
+        if trx.status not in [TransactionStatus.PROCESSING, TransactionStatus.RESUMED]:
+            raise AppValidationError(
+                message=f"Cannot pause transaction with status {trx.status}",
+                error_code="transaction_invalid_state_for_pause",
+                context={
+                    "transaction_id": transaction_id,
+                    "current_status": trx.status,
+                },
+            )
+
+        # Update to PAUSED status
+        updated = await self.transactions.update(
+            self.session,
+            trx,
+            status=TransactionStatus.PAUSED,
+            paused_at=datetime.utcnow(),
+            pause_reason=payload.reason,
+        )
+
+        logger.info(
+            "Transaction paused",
+            extra={"transaction_id": transaction_id, "reason": payload.reason},
+        )
+        return updated
+
+    async def resume_transaction(
+        self, transaction_id: int, payload: TransactionResumeRequest
+    ) -> Transactions:
+        """Resume paused transaction.
+
+        Args:
+            transaction_id: Transaction ID to resume
+            payload: Resume request
+
+        Returns:
+            Updated transaction with RESUMED status
+
+        Raises:
+            AppNotFoundError: If transaction not found
+            AppValidationError: If transaction is not paused or balance insufficient
+        """
+        trx = await self.get_transaction(transaction_id)
+
+        # Validate: can only resume PAUSED transactions
+        if trx.status != TransactionStatus.PAUSED:
+            raise AppValidationError(
+                message=f"Cannot resume transaction with status {trx.status}. Only PAUSED transactions can be resumed.",
+                error_code="transaction_not_paused",
+                context={
+                    "transaction_id": transaction_id,
+                    "current_status": trx.status,
+                },
+            )
+
+        # Check balance before resuming
+        binding, account, server = await self._load_binding_context(trx.binding_id)
+        idv = IdvService.from_server(server)
+        current_balance = await self._fetch_balance_int(idv, account.msisdn)
+
+        if current_balance is None:
+            raise AppValidationError(
+                message="Cannot check balance before resuming transaction.",
+                error_code="balance_check_failed",
+                context={"transaction_id": transaction_id, "msisdn": account.msisdn},
+            )
+
+        # Validate sufficient balance
+        if current_balance < (trx.limit_harga or 0):
+            raise AppValidationError(
+                message=f"Insufficient balance to resume transaction. Current: {current_balance}, Required: {trx.limit_harga}",
+                error_code="insufficient_balance",
+                context={
+                    "transaction_id": transaction_id,
+                    "current_balance": current_balance,
+                    "required": trx.limit_harga,
+                },
+            )
+
+        # Update to RESUMED status
+        updated = await self.transactions.update(
+            self.session,
+            trx,
+            status=TransactionStatus.RESUMED,
+            resumed_at=datetime.utcnow(),
+        )
+
+        logger.info(
+            "Transaction resumed",
+            extra={
+                "transaction_id": transaction_id,
+                "balance": current_balance,
+            },
+        )
+        return updated
+
     async def continue_transaction(self, transaction_id: int) -> Transactions:
         """Continue transaction: re-check status_idv and balance_end."""
         trx = await self.get_transaction(transaction_id)
@@ -452,6 +569,77 @@ class TransactionService:
         )
 
         return await self.get_transaction(trx.id)
+
+    async def check_balance_and_continue_or_stop(
+        self, transaction_id: int
+    ) -> tuple[Transactions, str]:
+        """Check balance and auto-decide: continue or stop transaction.
+
+        This is the on-demand check method that:
+        1. Fetches current balance
+        2. Compares with product price (limit_harga)
+        3. If balance sufficient: continues transaction (re-check status)
+        4. If balance insufficient: stops transaction
+
+        Args:
+            transaction_id: Transaction ID to check
+
+        Returns:
+            Tuple of (updated_transaction, action)
+            where action is "continued" or "stopped"
+
+        Raises:
+            AppNotFoundError: If transaction not found
+            AppValidationError: If balance check fails
+        """
+        trx = await self.get_transaction(transaction_id)
+
+        # Load context
+        binding, account, server = await self._load_binding_context(trx.binding_id)
+        idv = IdvService.from_server(server)
+
+        # Fetch current balance
+        current_balance = await self._fetch_balance_int(idv, account.msisdn)
+
+        if current_balance is None:
+            raise AppValidationError(
+                message="Cannot check balance for transaction.",
+                error_code="balance_check_failed",
+                context={"transaction_id": transaction_id, "msisdn": account.msisdn},
+            )
+
+        threshold = trx.limit_harga or 0
+
+        # Decision: continue or stop based on balance
+        if current_balance < threshold:
+            # Auto-stop: balance insufficient
+            logger.info(
+                "Auto-stopping transaction: balance insufficient",
+                extra={
+                    "transaction_id": transaction_id,
+                    "current_balance": current_balance,
+                    "threshold": threshold,
+                },
+            )
+            updated = await self.stop_transaction(
+                trx.id,
+                TransactionStopRequest(
+                    reason=f"auto_stop_balance_insufficient: {current_balance} < {threshold}"
+                ),
+            )
+            return updated, "stopped"
+        else:
+            # Continue: re-check status and balance
+            logger.info(
+                "Continuing transaction: balance sufficient",
+                extra={
+                    "transaction_id": transaction_id,
+                    "current_balance": current_balance,
+                    "threshold": threshold,
+                },
+            )
+            updated = await self.continue_transaction(trx.id)
+            return updated, "continued"
 
     @staticmethod
     def _compute_status_after_otp(

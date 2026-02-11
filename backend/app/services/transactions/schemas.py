@@ -114,6 +114,22 @@ class TransactionStopRequest(BaseModel):
     model_config = {"use_enum_values": True}
 
 
+class TransactionPauseRequest(BaseModel):
+    """Pause active transaction."""
+
+    reason: str = Field(
+        ..., description="Reason for pausing", examples=["manual_pause"]
+    )
+
+    model_config = {"use_enum_values": True}
+
+
+class TransactionResumeRequest(BaseModel):
+    """Resume paused transaction."""
+
+    model_config = {"use_enum_values": True}
+
+
 class TransactionCreateRequest(BaseModel):
     """Create transaction + optional snapshot in one request."""
 

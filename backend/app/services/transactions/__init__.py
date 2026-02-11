@@ -10,6 +10,8 @@ from app.services.transactions.schemas import (
     TransactionOtpRequest,
     TransactionContinueRequest,
     TransactionStopRequest,
+    TransactionPauseRequest,
+    TransactionResumeRequest,
 )
 from app.services.transactions.service import TransactionService
 
@@ -26,4 +28,6 @@ __all__ = [
     "TransactionOtpRequest",
     "TransactionContinueRequest",
     "TransactionStopRequest",
+    "TransactionPauseRequest",
+    "TransactionResumeRequest",
 ]

@@ -7,6 +7,8 @@ class TransactionStatus(StrEnum):
     """Transaction lifecycle status."""
 
     PROCESSING = "PROCESSING"
+    PAUSED = "PAUSED"
+    RESUMED = "RESUMED"
     SUKSES = "SUKSES"
     SUSPECT = "SUSPECT"
     GAGAL = "GAGAL"

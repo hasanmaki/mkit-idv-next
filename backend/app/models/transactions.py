@@ -1,6 +1,8 @@
 """Transaction models for voucher exchange."""
 
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.mixins import Base, TimestampMixin
@@ -43,7 +45,7 @@ class Transactions(Base, TimestampMixin):
         Enum(TransactionStatus, name="transaction_status"),
         nullable=False,
         default=TransactionStatus.PROCESSING,
-        doc="PROCESSING, SUKSES, SUSPECT, GAGAL",
+        doc="PROCESSING, PAUSED, RESUMED, SUKSES, SUSPECT, GAGAL",
     )
     is_success: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -51,6 +53,11 @@ class Transactions(Base, TimestampMixin):
     otp_status: Mapped[TransactionOtpStatus | None] = mapped_column(
         Enum(TransactionOtpStatus, name="transaction_otp_status"), nullable=True
     )
+
+    # Pause/Resume tracking
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    resumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pause_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     def __repr__(self) -> str:
         """Return a compact representation of the Transaction for debugging."""
