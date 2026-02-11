@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db_session
 from app.models.servers import Servers
 from app.services.servers import (
+    ServerBulkCreateResult,
     ServerCreate,
+    ServerCreateBulk,
     ServerResponse,
     ServerService,
     ServerUpdate,
@@ -24,6 +26,34 @@ async def create_server(
     """Create a new server entry."""
     service = ServerService(session)
     return await service.create_server(payload)
+
+
+@router.post(
+    "/bulk",
+    response_model=ServerBulkCreateResult,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_servers_bulk(
+    payload: ServerCreateBulk,
+    session: AsyncSession = Depends(get_db_session),
+) -> ServerBulkCreateResult:
+    """Create multiple servers from one host and a port range."""
+    service = ServerService(session)
+    return await service.create_servers_bulk(payload)
+
+
+@router.post(
+    "/bulk/dry-run",
+    response_model=ServerBulkCreateResult,
+    status_code=status.HTTP_200_OK,
+)
+async def dry_run_servers_bulk(
+    payload: ServerCreateBulk,
+    session: AsyncSession = Depends(get_db_session),
+) -> ServerBulkCreateResult:
+    """Preview bulk server creation without database writes."""
+    service = ServerService(session)
+    return await service.dry_run_servers_bulk(payload)
 
 
 @router.get("/", response_model=list[ServerResponse])

@@ -9,7 +9,14 @@ from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.servers import Servers
 from app.repos.server_repo import ServerRepository
-from app.services.servers.schemas import ServerCreate, ServerUpdate
+from app.services.servers.schemas import (
+    ServerBulkCreateResult,
+    ServerBulkItemResult,
+    ServerCreate,
+    ServerCreateBulk,
+    ServerResponse,
+    ServerUpdate,
+)
 
 logger = get_logger("service.servers")
 
@@ -52,6 +59,167 @@ class ServerService:
         server = await self.repo.create(self.session, **data.model_dump())
         logger.info("Server created successfully", extra={"server_id": server.id})
         return server
+
+    async def create_servers_bulk(
+        self, data: ServerCreateBulk
+    ) -> ServerBulkCreateResult:
+        """Create many servers from one host and a port range."""
+        items: list[ServerBulkItemResult] = []
+        created_count = 0
+        skipped_count = 0
+        failed_count = 0
+        total_requested = (data.end_port - data.start_port) + 1
+
+        for port in range(data.start_port, data.end_port + 1):
+            base_url = f"{data.base_host}:{port}"
+            try:
+                existing_by_port = await self.repo.get_by(self.session, port=port)
+                if existing_by_port:
+                    skipped_count += 1
+                    items.append(
+                        ServerBulkItemResult(
+                            port=port,
+                            base_url=base_url,
+                            status="skipped",
+                            reason="port already in use",
+                            server=None,
+                        )
+                    )
+                    continue
+
+                existing_by_url = await self.repo.get_by(
+                    self.session, base_url=base_url
+                )
+                if existing_by_url:
+                    skipped_count += 1
+                    items.append(
+                        ServerBulkItemResult(
+                            port=port,
+                            base_url=base_url,
+                            status="skipped",
+                            reason="base_url already in use",
+                            server=None,
+                        )
+                    )
+                    continue
+
+                server = await self.repo.create(
+                    self.session,
+                    port=port,
+                    base_url=base_url,
+                    description=data.description,
+                    timeout=data.timeout,
+                    retries=data.retries,
+                    wait_between_retries=data.wait_between_retries,
+                    max_requests_queued=data.max_requests_queued,
+                    is_active=data.is_active,
+                    notes=data.notes,
+                    device_id=data.device_id,
+                )
+                created_count += 1
+                items.append(
+                    ServerBulkItemResult(
+                        port=port,
+                        base_url=base_url,
+                        status="created",
+                        reason=None,
+                        server=ServerResponse.model_validate(server),
+                    )
+                )
+
+            except Exception as exc:
+                failed_count += 1
+                items.append(
+                    ServerBulkItemResult(
+                        port=port,
+                        base_url=base_url,
+                        status="failed",
+                        reason=str(exc),
+                        server=None,
+                    )
+                )
+
+        result = ServerBulkCreateResult(
+            base_host=data.base_host,
+            start_port=data.start_port,
+            end_port=data.end_port,
+            total_requested=total_requested,
+            total_created=created_count,
+            total_skipped=skipped_count,
+            total_failed=failed_count,
+            items=items,
+        )
+        logger.info(
+            "Bulk server creation completed",
+            extra={
+                "total_requested": total_requested,
+                "total_created": created_count,
+                "total_skipped": skipped_count,
+                "total_failed": failed_count,
+            },
+        )
+        return result
+
+    async def dry_run_servers_bulk(
+        self, data: ServerCreateBulk
+    ) -> ServerBulkCreateResult:
+        """Preview bulk creation without inserting records."""
+        items: list[ServerBulkItemResult] = []
+        created_count = 0
+        skipped_count = 0
+        total_requested = (data.end_port - data.start_port) + 1
+
+        for port in range(data.start_port, data.end_port + 1):
+            base_url = f"{data.base_host}:{port}"
+            existing_by_port = await self.repo.get_by(self.session, port=port)
+            if existing_by_port:
+                skipped_count += 1
+                items.append(
+                    ServerBulkItemResult(
+                        port=port,
+                        base_url=base_url,
+                        status="skipped",
+                        reason="port already in use",
+                        server=None,
+                    )
+                )
+                continue
+
+            existing_by_url = await self.repo.get_by(self.session, base_url=base_url)
+            if existing_by_url:
+                skipped_count += 1
+                items.append(
+                    ServerBulkItemResult(
+                        port=port,
+                        base_url=base_url,
+                        status="skipped",
+                        reason="base_url already in use",
+                        server=None,
+                    )
+                )
+                continue
+
+            created_count += 1
+            items.append(
+                ServerBulkItemResult(
+                    port=port,
+                    base_url=base_url,
+                    status="would_create",
+                    reason=None,
+                    server=None,
+                )
+            )
+
+        return ServerBulkCreateResult(
+            base_host=data.base_host,
+            start_port=data.start_port,
+            end_port=data.end_port,
+            total_requested=total_requested,
+            total_created=created_count,
+            total_skipped=skipped_count,
+            total_failed=0,
+            items=items,
+        )
 
     async def update_server(self, server_id: int, data: ServerUpdate) -> Servers:
         """Update an existing server."""
