@@ -1,4 +1,4 @@
-from app.services.accounts.crud_services import AccountsService
+from backend.app.services.accounts.services import AccountsService
 from app.services.accounts.schemas import (
     AccountCreateBulk,
     AccountCreateSingle,
