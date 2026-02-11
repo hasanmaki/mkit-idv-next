@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mkit-idv Dashboard</title>
+    <link href="/style.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="app()" class="bg-dark text-white">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-darker border-r border-white/10 flex flex-col">
+            <div class="p-6 border-b border-white/10">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">mkit-idv</h1>
+                <p class="text-slate-500 text-sm">Voucher Management</p>
+            </div>
+
+            <nav class="flex-1 px-4 py-6 space-y-2">
+                <template x-for="item in navItems" :key="item.id">
+                    <button
+                        @click="view = item.id"
+                        :class="view === item.id ? 'bg-primary/10 text-primary border-r-2 border-primary' : 'text-slate-400 hover:text-white hover:bg-white/5'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-r-lg transition-all text-left">
+                        <span x-html="item.icon"></span>
+                        <span x-text="item.name"></span>
+                    </button>
+                </template>
+            </nav>
+
+            <div class="p-4 border-t border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">
+                        <span x-text="userInitials"></span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium" x-text="userName"></p>
+                        <p class="text-xs text-slate-500">Admin</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto bg-dark">
+            <!-- Servers View -->
+            <div x-show="view === 'servers'" class="p-8 space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2">Servers</h2>
+                        <p class="text-slate-400">Manage IDV server endpoints</p>
+                    </div>
+                    <button @click="showServerModal = true" class="btn-primary">+ Add Server</button>
+                </div>
+
+                <div class="card">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Base URL</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Description</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="server in servers" :key="server.id">
+                                <tr class="border-b border-white/5 hover:bg-white/5">
+                                    <td class="py-3 px-4" x-text="server.id"></td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex flex-col">
+                                            <span x-text="server.base_url" class="font-mono text-sm"></span>
+                                            <span x-text="'Port: ' + server.port" class="text-xs text-slate-500"></span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4" x-text="server.description || '-'"></td>
+                                    <td class="py-3 px-4">
+                                        <span :class="server.is_active ? 'badge-success' : 'badge-error'" x-text="server.is_active ? 'Active' : 'Inactive'"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <button @click="toggleServerStatus(server.id, !server.is_active)" class="text-primary hover:text-primary/80 mr-3 text-sm">Toggle</button>
+                                        <button @click="deleteServer(server.id)" class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="servers.length === 0">
+                                <td colspan="5" class="py-8 text-center text-slate-500">No servers found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Accounts View -->
+            <div x-show="view === 'accounts'" class="p-8 space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2">Accounts</h2>
+                        <p class="text-slate-400">Manage myim3 accounts (MSISDN)</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button @click="showAccountBulkModal = true" class="btn-secondary">+ Bulk Import</button>
+                        <button @click="showAccountModal = true" class="btn-primary">+ Add Account</button>
+                    </div>
+                </div>
+
+                <div class="card overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">MSISDN</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Email</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Batch ID</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Balance</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Reseller</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="account in accounts" :key="account.id">
+                                <tr class="border-b border-white/5 hover:bg-white/5">
+                                    <td class="py-3 px-4" x-text="account.id"></td>
+                                    <td class="py-3 px-4 font-mono text-sm" x-text="account.msisdn"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="account.email"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="account.batch_id"></td>
+                                    <td class="py-3 px-4">
+                                        <span x-text="account.balance_last ? 'Rp ' + account.balance_last.toLocaleString() : '-'"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span :class="{
+                                            'badge-success': account.status === 'ACTIVE',
+                                            'badge-warning': account.status === 'EXHAUSTED',
+                                            'badge-error': account.status === 'BANNED'
+                                        }" x-text="account.status"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span :class="account.is_reseller ? 'badge-success' : 'badge-gray'" x-text="account.is_reseller ? 'Yes' : 'No'"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <button @click="deleteAccount(account.id)" class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="accounts.length === 0">
+                                <td colspan="8" class="py-8 text-center text-slate-500">No accounts found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Bindings View -->
+            <div x-show="view === 'bindings'" class="p-8 space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2">Bindings</h2>
+                        <p class="text-slate-400">Bind accounts to servers (login sessions)</p>
+                    </div>
+                    <button @click="showBindingModal = true" class="btn-primary">+ Create Binding</button>
+                </div>
+
+                <div class="card overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Server</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Account</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Step</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Balance</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Reseller</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="binding in bindings" :key="binding.id">
+                                <tr class="border-b border-white/5 hover:bg-white/5">
+                                    <td class="py-3 px-4" x-text="binding.id"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="'Server #' + binding.server_id"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="'Account #' + binding.account_id"></td>
+                                    <td class="py-3 px-4">
+                                        <span :class="{
+                                            'badge-gray': binding.step === 'CREATED',
+                                            'badge-info': binding.step === 'LOGGED_IN',
+                                            'badge-warning': binding.step === 'OTP_VERIFIED',
+                                            'badge-success': binding.step === 'RESELLER_CONFIRMED'
+                                        }" x-text="binding.step"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span x-text="binding.balance_last ? 'Rp ' + binding.balance_last.toLocaleString() : '-'"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span :class="binding.is_reseller ? 'badge-success' : 'badge-gray'" x-text="binding.is_reseller ? 'Yes' : 'No'"></span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex gap-2">
+                                            <button
+                                                x-show="binding.step === 'LOGGED_IN'"
+                                                @click="showVerifyLoginModal(binding)"
+                                                class="text-primary hover:text-primary/80 text-sm">Verify</button>
+                                            <button
+                                                @click="logoutBinding(binding.id)"
+                                                class="text-yellow-400 hover:text-yellow-300 text-sm">Logout</button>
+                                            <button
+                                                @click="deleteBinding(binding.id)"
+                                                class="text-red-400 hover:text-red-300 text-sm">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="bindings.length === 0">
+                                <td colspan="7" class="py-8 text-center text-slate-500">No bindings found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Transactions View -->
+            <div x-show="view === 'transactions'" class="p-8 space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold mb-2">Live Transactions</h2>
+                        <p class="text-slate-400">Monitor and control voucher transactions</p>
+                    </div>
+                    <button @click="showTransactionModal = true" class="btn-primary">+ Start Transaction</button>
+                </div>
+
+                <div class="card overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Binding</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Product</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Amount</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Voucher</th>
+                                <th class="text-left py-3 px-4 text-slate-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="trx in transactions" :key="trx.id">
+                                <tr class="border-b border-white/5 hover:bg-white/5">
+                                    <td class="py-3 px-4 font-mono text-sm" x-text="trx.id"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="'#' + trx.binding_id"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="trx.product_id || '-'"></td>
+                                    <td class="py-3 px-4 text-sm" x-text="trx.amount ? 'Rp ' + trx.amount.toLocaleString() : '-'"></td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex flex-col gap-1">
+                                            <span :class="{
+                                                'badge-gray': trx.status === 'CREATED',
+                                                'badge-info': trx.status === 'PROCESSING',
+                                                'badge-warning': trx.status === 'PAUSED',
+                                                'badge-success': trx.status === 'SUKSES',
+                                                'badge-error': trx.status === 'GAGAL'
+                                            }" x-text="trx.status"></span>
+                                            <span x-show="trx.otp_required && trx.status === 'PROCESSING'" class="text-xs text-yellow-400">(OTP Required)</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span x-show="trx.voucher_code" class="font-mono text-sm text-green-400" x-text="trx.voucher_code"></span>
+                                        <span x-show="!trx.voucher_code" class="text-slate-500">-</span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <div class="flex flex-col gap-1 text-sm">
+                                            <button x-show="trx.otp_required && trx.status === 'PROCESSING'" @click="showOtpModal(trx)" class="text-primary hover:text-primary/80 text-left">Submit OTP</button>
+                                            <button x-show="trx.status === 'PROCESSING' && !trx.otp_required" @click="continueTransaction(trx.id)" class="text-green-400 hover:text-green-300 text-left">Continue</button>
+                                            <button x-show="trx.status === 'PROCESSING' || trx.status === 'RESUMED'" @click="pauseTransaction(trx.id)" class="text-yellow-400 hover:text-yellow-300 text-left">Pause</button>
+                                            <button x-show="trx.status === 'PAUSED'" @click="resumeTransaction(trx.id)" class="text-green-400 hover:text-green-300 text-left">Resume</button>
+                                            <button x-show="trx.status !== 'SUKSES' && trx.status !== 'GAGAL'" @click="stopTransaction(trx.id)" class="text-red-400 hover:text-red-300 text-left">Stop</button>
+                                            <button @click="checkBalance(trx.id)" class="text-blue-400 hover:text-blue-300 text-left">Check Balance</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="transactions.length === 0">
+                                <td colspan="7" class="py-8 text-center text-slate-500">No transactions found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Server Modal -->
+    <div x-show="showServerModal" class="modal" @click.self="showServerModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Add Server</h3>
+            <form @submit.prevent="createServer" class="space-y-4">
+                <div>
+                    <label class="label">Base URL</label>
+                    <input type="text" x-model="serverForm.base_url" class="input-field" placeholder="http://localhost:9900" required>
+                </div>
+                <div>
+                    <label class="label">Port</label>
+                    <input type="number" x-model="serverForm.port" class="input-field" placeholder="9900" required>
+                </div>
+                <div>
+                    <label class="label">Description</label>
+                    <input type="text" x-model="serverForm.description" class="input-field" placeholder="myim3 Bot #1">
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showServerModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div x-show="showAccountModal" class="modal" @click.self="showAccountModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Add Account</h3>
+            <form @submit.prevent="createAccount" class="space-y-4">
+                <div>
+                    <label class="label">MSISDN</label>
+                    <input type="text" x-model="accountForm.msisdn" class="input-field" placeholder="085777076575" required>
+                </div>
+                <div>
+                    <label class="label">Email</label>
+                    <input type="email" x-model="accountForm.email" class="input-field" placeholder="user@example.com" required>
+                </div>
+                <div>
+                    <label class="label">Batch ID</label>
+                    <input type="text" x-model="accountForm.batch_id" class="input-field" placeholder="batch-2026-02-11" required>
+                </div>
+                <div>
+                    <label class="label">PIN (Optional)</label>
+                    <input type="text" x-model="accountForm.pin" class="input-field" placeholder="1234">
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showAccountModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Bulk Modal -->
+    <div x-show="showAccountBulkModal" class="modal" @click.self="showAccountBulkModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Bulk Import Accounts</h3>
+            <form @submit.prevent="createAccountsBulk" class="space-y-4">
+                <div>
+                    <label class="label">MSISDNs (one per line)</label>
+                    <textarea x-model="accountBulkForm.msisdns_text" class="input-field" rows="5" placeholder="085777076575&#10;08156142731&#10;..." required></textarea>
+                </div>
+                <div>
+                    <label class="label">Email (for all)</label>
+                    <input type="email" x-model="accountBulkForm.email" class="input-field" placeholder="user@example.com" required>
+                </div>
+                <div>
+                    <label class="label">Batch ID (for all)</label>
+                    <input type="text" x-model="accountBulkForm.batch_id" class="input-field" placeholder="batch-2026-02-11" required>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showAccountBulkModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Binding Modal -->
+    <div x-show="showBindingModal" class="modal" @click.self="showBindingModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Create Binding</h3>
+            <form @submit.prevent="createBinding" class="space-y-4">
+                <div>
+                    <label class="label">Server</label>
+                    <select x-model="bindingForm.server_id" class="input-field" required>
+                        <option value="">Select server</option>
+                        <template x-for="server in servers" :key="server.id">
+                            <option :value="server.id" x-text="server.base_url + ' (' + server.description + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="label">Account</label>
+                    <select x-model="bindingForm.account_id" class="input-field" required>
+                        <option value="">Select account</option>
+                        <template x-for="account in accounts" :key="account.id">
+                            <option :value="account.id" x-text="account.msisdn + ' (' + account.email + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showBindingModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Verify Login Modal -->
+    <div x-show="showVerifyModal" class="modal" @click.self="showVerifyModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Verify Login OTP</h3>
+            <form @submit.prevent="verifyLogin" class="space-y-4">
+                <div>
+                    <label class="label">OTP Code</label>
+                    <input type="text" x-model="verifyForm.otp" class="input-field" placeholder="123456" required>
+                </div>
+                <div>
+                    <label class="label">PIN (Optional override)</label>
+                    <input type="text" x-model="verifyForm.pin" class="input-field" placeholder="1234">
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showVerifyModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Verify</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div x-show="showTransactionModal" class="modal" @click.self="showTransactionModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Start Transaction</h3>
+            <form @submit.prevent="startTransaction" class="space-y-4">
+                <div>
+                    <label class="label">Binding</label>
+                    <select x-model="transactionForm.binding_id" class="input-field" required>
+                        <option value="">Select binding</option>
+                        <template x-for="binding in bindings" :key="binding.id">
+                            <option :value="binding.id" x-text="'Binding #' + binding.id + ' (Account #' + binding.account_id + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="label">Product ID</label>
+                    <input type="text" x-model="transactionForm.product_id" class="input-field" placeholder="650" required>
+                </div>
+                <div>
+                    <label class="label">Email</label>
+                    <input type="email" x-model="transactionForm.email" class="input-field" placeholder="user@example.com" required>
+                </div>
+                <div>
+                    <label class="label">Limit Harga</label>
+                    <input type="number" x-model="transactionForm.limit_harga" class="input-field" placeholder="100000" required>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" x-model="transactionForm.otp_required" id="otp_required">
+                    <label for="otp_required" class="text-sm text-slate-400">OTP Required</label>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showTransactionModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Start</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- OTP Submit Modal -->
+    <div x-show="showOtpSubmitModal" class="modal" @click.self="showOtpSubmitModal = false">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Submit OTP</h3>
+            <form @submit.prevent="submitOtp" class="space-y-4">
+                <div>
+                    <label class="label">OTP Code</label>
+                    <input type="text" x-model="otpForm.otp" class="input-field" placeholder="358372" required>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="showOtpSubmitModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

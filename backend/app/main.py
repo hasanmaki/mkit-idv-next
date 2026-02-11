@@ -1,11 +1,19 @@
 """main entry point for the FastAPI application."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.api import route_accounts, route_bindings, route_servers, route_transactions
+from app.api import (
+    route_accounts,
+    route_bindings,
+    route_servers,
+    route_tools,
+    route_transactions,
+)
 from app.core.exceptions.handlers import register_exception_handlers
 from app.core.log_config import configure_logging
 from app.core.middlewares import RequestLoggingMiddleware, TraceIDMiddleware
@@ -53,7 +61,30 @@ app.include_router(route_bindings.router, tags=["bindings"], prefix="/v1/binding
 app.include_router(
     route_transactions.router, tags=["transactions"], prefix="/v1/transactions"
 )
-# app.include_router(bindings.router, prefix="/v1/bindings")
+
+# New Tools Router
+
+app.include_router(route_tools.router, tags=["tools"], prefix="/v1/tools")
 
 # Register exception handlers setelah middleware
 register_exception_handlers(app)
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker and orchestrators."""
+    return {"status": "healthy"}
+
+
+# Mount Static Files (Frontend)
+
+
+# Fix: In Docker, frontend is at /app/frontend (one level up from /app/app)
+# In development, it's at project_root/frontend (three levels up from app/app/main.py)
+current_file_dir = os.path.dirname(__file__)  # /app/app
+app_dir = os.path.dirname(current_file_dir)  # /app
+frontend_path = os.path.join(app_dir, "frontend")  # /app/frontend
+
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")

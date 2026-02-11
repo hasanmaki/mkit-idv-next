@@ -1,0 +1,12 @@
+{
+  "name": "mkit-idv-ui",
+  "version": "1.0.0",
+  "description": "Frontend for mkit-idv-next",
+  "scripts": {
+    "build": "tailwindcss -i ./src/input.css -o ./style.css",
+    "watch": "tailwindcss -i ./src/input.css -o ./style.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+}

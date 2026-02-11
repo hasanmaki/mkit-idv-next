@@ -61,6 +61,7 @@ interrogate app -c pyproject.toml
 ## Code Style Guidelines
 
 **General:**
+
 - Python 3.13+ target
 - Line length: 88 characters
 - Double quotes for strings
@@ -68,6 +69,7 @@ interrogate app -c pyproject.toml
 - Type hints required
 
 **Imports:**
+
 ```python
 # Standard library
 from collections.abc import Sequence
@@ -83,6 +85,7 @@ from app.models.servers import Servers
 ```
 
 **Naming Conventions:**
+
 - Files: `snake_case.py` (e.g., `route_servers.py`, `server_repo.py`)
 - Classes: `PascalCase` (e.g., `BaseRepository`, `ServerService`)
 - Functions/variables: `snake_case`
@@ -90,12 +93,14 @@ from app.models.servers import Servers
 - Private: `_leading_underscore`
 
 **Type Hints:**
+
 - Use `|` for unions: `ModelType | None`
 - Use `type[]` not `Type[]`
 - Return types required except `self`, `cls`
 - `Any` allowed (ANN401 ignored)
 
 **Error Handling:**
+
 - Use custom exceptions from `app.core.exceptions`
 - `AppNotFoundError`, `AppValidationError`, etc.
 - Wrap external calls with `BaseHTTPClient`
@@ -103,6 +108,7 @@ from app.models.servers import Servers
 **Layer Patterns:**
 
 Repository (`app/repos/`):
+
 ```python
 class ServerRepository(BaseRepository[Servers]):
     def __init__(self):
@@ -110,6 +116,7 @@ class ServerRepository(BaseRepository[Servers]):
 ```
 
 Service (`app/services/`):
+
 ```python
 class ServerService:
     def __init__(self, session: AsyncSession):
@@ -118,6 +125,7 @@ class ServerService:
 ```
 
 Routes (`app/api/`):
+
 ```python
 @router.post("/", response_model=ServerResponse)
 async def create_server(
@@ -129,6 +137,7 @@ async def create_server(
 ```
 
 **Logging:**
+
 ```python
 from app.core.log_config import get_logger
 logger = get_logger(__name__)
@@ -136,6 +145,7 @@ logger.info("message", extra={"key": "value"})
 ```
 
 **Ruff Ignored Rules:**
+
 - E501: Line length (handled by formatter)
 - D107: `__init__` docstrings
 - ANN201/202: Return types for `cls`/`self`
@@ -143,11 +153,13 @@ logger.info("message", extra={"key": "value"})
 - TRY003: Long exception messages OK
 
 **Test Exclusions:**
+
 - Tests don't require docstrings (D ignored)
 - Tests don't require type hints (ANN ignored)
 - Assertions allowed (S101 ignored)
 
 **Configuration:**
+
 - Settings via env vars with `__` separator (e.g., `DB__DB_URL`)
 - Default DB: `sqlite+aiosqlite:///./application.db`
 
