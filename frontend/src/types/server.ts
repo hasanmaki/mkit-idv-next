@@ -60,3 +60,14 @@ export type ServerBulkPayload = {
   notes: string | null;
   device_id: string | null;
 };
+
+export type ServerUpdatePayload = {
+  description?: string | null;
+  timeout?: number;
+  retries?: number;
+  wait_between_retries?: number;
+  max_requests_queued?: number;
+  is_active?: boolean;
+  notes?: string | null;
+  device_id?: string | null;
+};

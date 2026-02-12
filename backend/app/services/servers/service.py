@@ -328,7 +328,15 @@ class ServerService:
                 error_code="server_not_found",
                 context={"server_id": server_id},
             )
+
+        # TODO(hasanmaki): before delete, enforce no running transactions/bindings.
+        # Current transaction orchestration does not expose this check yet.
+
+        if server.is_active:
+            await self.repo.update(self.session, server, is_active=False)
+            logger.info(
+                "Server deactivated before delete", extra={"server_id": server_id}
+            )
+
         await self.repo.delete(self.session, server_id)
         logger.info("Server deleted successfully", extra={"server_id": server_id})
-
-        # TODO: add logic to check is theres a running transaction before deleting or deactivate

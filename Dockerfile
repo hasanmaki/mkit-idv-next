@@ -52,7 +52,7 @@ EXPOSE ${PORT}
 
 # Health check for orchestrators (Docker Compose, Kubernetes, etc.)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:9914/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:9914/health')" || exit 1
 
 # Run with uv to activate the virtual environment
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9914"]

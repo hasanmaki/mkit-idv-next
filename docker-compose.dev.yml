@@ -20,6 +20,8 @@ services:
       - "9914:9914"
     environment:
       PYTHONUNBUFFERED: "1"
+      WATCHFILES_FORCE_POLLING: "true"
+      WATCHFILES_POLL_DELAY_MS: "300"
     volumes:
       - ./backend/app:/app/app:cached
       - ./backend/mlog.yaml:/app/mlog.yaml:ro
@@ -31,7 +33,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import httpx; httpx.get('http://localhost:9914/health')",
+          "import urllib.request; urllib.request.urlopen('http://localhost:9914/health')",
         ]
       interval: 30s
       timeout: 5s
@@ -47,6 +49,8 @@ services:
     command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
     environment:
       VITE_PROXY_TARGET: "http://app:9914"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
     ports:
       - "5173:5173"
     volumes:
