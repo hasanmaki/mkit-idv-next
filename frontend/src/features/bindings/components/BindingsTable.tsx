@@ -39,6 +39,21 @@ function badgeVariant(step: Binding["step"]): "default" | "secondary" | "destruc
   return "default";
 }
 
+function tokenBadge(binding: Binding): { label: string; variant: "default" | "secondary" | "destructive" } {
+  if (!binding.token_location || !binding.token_location_refreshed_at) {
+    return { label: "Empty", variant: "secondary" };
+  }
+  const refreshedAtMs = new Date(binding.token_location_refreshed_at).getTime();
+  const ageMinutes = (Date.now() - refreshedAtMs) / 60000;
+  if (Number.isNaN(ageMinutes)) {
+    return { label: "Stale", variant: "destructive" };
+  }
+  if (ageMinutes <= 10) {
+    return { label: "Fresh", variant: "default" };
+  }
+  return { label: "Stale", variant: "destructive" };
+}
+
 type BindingsTableProps = {
   bindings: Binding[];
   selectedBindingIds: number[];
@@ -88,6 +103,7 @@ export function BindingsTable({
             <TableHead className="w-[150px]">Step</TableHead>
             <TableHead className="w-[100px]">Reseller</TableHead>
             <TableHead className="w-[120px]">Balance</TableHead>
+            <TableHead className="w-[100px]">Token</TableHead>
             <TableHead className="w-[160px]">Device</TableHead>
             <TableHead className="w-[90px] text-right">Actions</TableHead>
           </TableRow>
@@ -95,13 +111,13 @@ export function BindingsTable({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={10} className="text-center text-muted-foreground">
+              <TableCell colSpan={11} className="text-center text-muted-foreground">
                 Loading bindings...
               </TableCell>
             </TableRow>
           ) : bindings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={10} className="text-center text-muted-foreground">
+              <TableCell colSpan={11} className="text-center text-muted-foreground">
                 Belum ada binding.
               </TableCell>
             </TableRow>
@@ -109,6 +125,7 @@ export function BindingsTable({
             bindings.map((binding) => {
               const rowAction = pendingRowActions[binding.id];
               const isBusy = Boolean(rowAction);
+              const tokenInfo = tokenBadge(binding);
               return (
                 <TableRow key={binding.id}>
                   <TableCell>
@@ -143,6 +160,11 @@ export function BindingsTable({
                   <TableCell>{binding.is_reseller ? "Yes" : "No"}</TableCell>
                   <TableCell>
                     {binding.balance_start ?? "-"} / {binding.balance_last ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={tokenInfo.variant} title={binding.token_location_refreshed_at ?? "-"}>
+                      {tokenInfo.label}
+                    </Badge>
                   </TableCell>
                   <TableCell className="truncate font-mono text-xs">
                     {binding.device_id ?? binding.server_device_id ?? "-"}

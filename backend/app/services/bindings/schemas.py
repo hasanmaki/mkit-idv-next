@@ -32,6 +32,9 @@ class BindingUpdate(BaseModel):
     last_error_message: str | None = Field(None, examples=["Invalid OTP"])
     token_login: str | None = Field(None, examples=["eyJhbGciOiJIUzUxMiJ9..."])
     token_location: str | None = Field(None, examples=["eyJ0eXAiOiJKV1QiLCJhb..."])
+    token_location_refreshed_at: datetime | None = Field(
+        None, examples=["2026-02-12T11:30:00.000Z"]
+    )
     device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
 
     model_config = {"use_enum_values": True}
@@ -82,6 +85,9 @@ class BindingRead(BaseModel):
     last_error_message: str | None = Field(None, examples=["Invalid OTP"])
     token_login: str | None = Field(None, examples=["eyJhbGciOiJIUzUxMiJ9..."])
     token_location: str | None = Field(None, examples=["eyJ0eXAiOiJKV1QiLCJhb..."])
+    token_location_refreshed_at: datetime | None = Field(
+        None, examples=["2026-02-12T11:30:00.000Z"]
+    )
     device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
     bound_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
     unbound_at: datetime | None = Field(None, examples=["2026-02-10T20:00:00.000Z"])

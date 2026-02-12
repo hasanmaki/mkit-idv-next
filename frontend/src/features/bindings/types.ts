@@ -21,6 +21,7 @@ export type Binding = {
   last_error_message: string | null;
   token_login: string | null;
   token_location: string | null;
+  token_location_refreshed_at: string | null;
   device_id: string | null;
   bound_at: string;
   unbound_at: string | null;

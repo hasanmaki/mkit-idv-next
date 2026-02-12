@@ -331,6 +331,7 @@ class BindingService:
                 if isinstance(token_location, dict)
                 else token_location
             ),
+            token_location_refreshed_at=datetime.utcnow(),
             device_id=detected_device_id,
         )
         await self.accounts.update(
@@ -452,6 +453,7 @@ class BindingService:
                     last_error_message=binding.last_error_message,
                     token_login=binding.token_login,
                     token_location=binding.token_location,
+                    token_location_refreshed_at=binding.token_location_refreshed_at,
                     device_id=binding.device_id,
                     bound_at=binding.bound_at,
                     unbound_at=binding.unbound_at,
@@ -736,7 +738,10 @@ class BindingService:
             else token_location_resp
         )
         return await self.bindings.update(
-            self.session, binding, token_location=token_location
+            self.session,
+            binding,
+            token_location=token_location,
+            token_location_refreshed_at=datetime.utcnow(),
         )
 
     async def delete_binding(self, binding_id: int) -> None:
