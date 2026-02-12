@@ -4,11 +4,61 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FastAPI application for managing Indosat voucher (IDV) transactions. Handles server management, account bindings, and transaction processing with comprehensive audit logging and retry mechanisms for external service calls.
+Full-stack voucher management system with IDV integration.
+
+**Backend**: FastAPI application for managing Indosat voucher (IDV) transactions. Handles server management, account bindings, and transaction processing with comprehensive audit logging and retry mechanisms for external service calls.
+
+**Frontend**: React + Vite + TypeScript + Tailwind CSS + shadcn/ui for the dashboard interface.
 
 ## Development Commands
 
+### Frontend
+
+All commands should be run from the `frontend/` directory.
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run dev server (proxies API to backend at localhost:9914)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
+```
+
+The Vite dev server proxies API requests to the backend:
+- `/v1/*` → backend API routes
+- `/health` → backend health check
+
+Configure `VITE_PROXY_TARGET` env var to change the proxy target (default: `http://127.0.0.1:8000`).
+
+### Backend
+
 All commands should be run from the `backend/` directory.
+
+### Docker Development
+
+For containerized development with hot-reload on frontend:
+
+```bash
+# Development mode (frontend Vite dev + backend)
+docker compose -f docker-compose.dev.yml up --build
+
+# Production-like mode (static frontend + backend)
+docker compose up --build
+```
+
+Frontend dev server: http://localhost:5173
+Backend API: http://localhost:9914
 
 ### Running the Application
 
@@ -42,6 +92,24 @@ pytest -v tests/services/
 pytest -n auto
 ```
 
+### Database Migrations
+
+```bash
+cd backend
+
+# Create new migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback migrations
+alembic downgrade -1
+
+# View migration history
+alembic history
+```
+
 ### Code Quality
 
 ```bash
@@ -61,6 +129,36 @@ interrogate backend/app -c backend/pyproject.toml
 ```
 
 ## Architecture
+
+### Frontend Architecture
+
+**Feature-based organization** ([frontend/src/features/](frontend/src/features/))
+
+Each feature domain (servers, accounts, bindings, transactions) is self-contained with:
+- `components/` - Feature-specific React components
+- `hooks/` - Custom React hooks managing state and API calls
+- `types.ts` - TypeScript types for the domain
+
+**Shared UI components** ([frontend/src/components/](frontend/src/components/))
+
+- `ui/` - shadcn/ui components (Button, Dialog, Input, Table, etc.)
+- Shared components use the `@/components/ui` import alias
+
+**API layer** ([frontend/src/lib/api.ts](frontend/src/lib/api.ts))
+
+- `apiRequest<T>(path, method, body)` - Generic fetch wrapper
+- Centralized error handling with toast notifications (via `sonner`)
+- `VITE_API_BASE_URL` env var for API base URL (empty in dev with proxy)
+
+**Types** ([frontend/src/types/](frontend/src/types/))
+
+- Domain types mirror backend Pydantic schemas (e.g., `Server`, `Account`)
+- Payload types for create/update operations
+- Result types for bulk operations
+
+**Build system**: Vite with React plugin, Tailwind CSS v4 via `@tailwindcss/vite`, TypeScript strict mode
+
+### Backend Architecture
 
 The codebase follows a clean layered architecture:
 
@@ -123,6 +221,17 @@ The codebase follows a clean layered architecture:
 - Repositories can flush without committing by using `commit=False` (default)
 - Service layer coordinates multi-step operations within a single transaction
 
+### Frontend Hook Pattern
+
+Custom hooks in `features/*/hooks/` encapsulate all business logic for a feature:
+- State management (servers, dialogs, forms, selections)
+- API calls via `apiRequest()`
+- Toast notifications via `sonner`
+- Optimistic updates and error handling
+- Return object with state, setters, and action handlers
+
+Example: `useServers()` hook manages all server CRUD operations, dialogs, form state, and selection state.
+
 ## Important Patterns
 
 ### Logging
@@ -174,6 +283,15 @@ Nested settings use double underscore: `DB__DB_URL`, `CORS__ALLOW_ORIGINS`
 - Tests should not require docstrings (excluded via ruff config)
 
 ## Code Style
+
+### Frontend
+
+- ESLint with `eslint.config.js` for React and TypeScript
+- Prettier-style formatting via Vite
+- Path alias: `@/` → `src/` (configured in `vite.config.ts`)
+- Import sorting via `isort` equivalent
+
+### Backend
 
 Enforced by Ruff:
 

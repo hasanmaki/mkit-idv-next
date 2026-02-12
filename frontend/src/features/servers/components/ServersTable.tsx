@@ -61,7 +61,6 @@ export function ServersTable({
             <TableHead className="w-[90px]">ID</TableHead>
             <TableHead className="w-[320px]">Base URL</TableHead>
             <TableHead>Description</TableHead>
-            <TableHead className="w-[180px]">Device ID</TableHead>
             <TableHead className="w-[100px]">Timeout</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead className="w-[190px]">Updated</TableHead>
@@ -71,13 +70,13 @@ export function ServersTable({
         <TableBody>
           {isLoadingServers ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Loading servers...
               </TableCell>
             </TableRow>
           ) : servers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Belum ada server.
               </TableCell>
             </TableRow>
@@ -99,7 +98,6 @@ export function ServersTable({
                   <TableCell>#{server.id}</TableCell>
                   <TableCell className="truncate font-mono text-xs">{server.base_url}</TableCell>
                   <TableCell className="truncate">{server.description ?? "-"}</TableCell>
-                  <TableCell className="truncate font-mono text-xs">{server.device_id ?? "-"}</TableCell>
                   <TableCell>{server.timeout}s</TableCell>
                   <TableCell>
                     <Badge variant={server.is_active ? "default" : "secondary"}>

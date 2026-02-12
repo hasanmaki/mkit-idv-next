@@ -106,14 +106,6 @@ export function SingleServerFormFields({ form, onChange }: SingleServerFormField
         max_requests_queued={form.max_requests_queued}
         onChange={(key, value) => onChange((prev) => ({ ...prev, [key]: value }))}
       />
-      <div className="space-y-2">
-        <Label htmlFor="single-device-id">Device ID</Label>
-        <Input
-          id="single-device-id"
-          value={form.device_id}
-          onChange={(event) => onChange((prev) => ({ ...prev, device_id: event.target.value }))}
-        />
-      </div>
       <div className="space-y-2 md:col-span-2">
         <Label htmlFor="single-notes">Notes</Label>
         <Textarea
@@ -188,14 +180,6 @@ export function BulkServerFormFields({ form, onChange }: BulkServerFormFieldsPro
         max_requests_queued={form.max_requests_queued}
         onChange={(key, value) => onChange((prev) => ({ ...prev, [key]: value }))}
       />
-      <div className="space-y-2">
-        <Label htmlFor="bulk-device-id">Device ID</Label>
-        <Input
-          id="bulk-device-id"
-          value={form.device_id}
-          onChange={(event) => onChange((prev) => ({ ...prev, device_id: event.target.value }))}
-        />
-      </div>
       <div className="space-y-2 md:col-span-2">
         <Label htmlFor="bulk-notes">Notes</Label>
         <Textarea
@@ -245,16 +229,6 @@ export function EditServerFormFields({ form, onChange }: EditServerFormFieldsPro
         max_requests_queued={form.max_requests_queued}
         onChange={(key, value) => onChange((prev) => (prev ? { ...prev, [key]: value } : prev))}
       />
-      <div className="space-y-2">
-        <Label htmlFor="edit-device-id">Device ID</Label>
-        <Input
-          id="edit-device-id"
-          value={form.device_id}
-          onChange={(event) =>
-            onChange((prev) => (prev ? { ...prev, device_id: event.target.value } : prev))
-          }
-        />
-      </div>
       <div className="space-y-2 md:col-span-2">
         <Label htmlFor="edit-notes">Notes</Label>
         <Textarea

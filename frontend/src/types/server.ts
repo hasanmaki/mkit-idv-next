@@ -44,7 +44,6 @@ export type ServerCreatePayload = {
   max_requests_queued: number;
   is_active: boolean;
   notes: string | null;
-  device_id: string | null;
 };
 
 export type ServerBulkPayload = {
@@ -58,7 +57,6 @@ export type ServerBulkPayload = {
   max_requests_queued: number;
   is_active: boolean;
   notes: string | null;
-  device_id: string | null;
 };
 
 export type ServerUpdatePayload = {
@@ -69,5 +67,4 @@ export type ServerUpdatePayload = {
   max_requests_queued?: number;
   is_active?: boolean;
   notes?: string | null;
-  device_id?: string | null;
 };

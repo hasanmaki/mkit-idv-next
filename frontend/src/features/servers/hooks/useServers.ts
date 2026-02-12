@@ -127,7 +127,6 @@ export function useServers() {
         max_requests_queued: singleForm.max_requests_queued,
         is_active: singleForm.is_active,
         notes: singleForm.notes || null,
-        device_id: singleForm.device_id || null,
       };
 
       const created = await apiRequest<Server>("/v1/servers", "POST", payload);
@@ -149,7 +148,6 @@ export function useServers() {
       base_host: bulkForm.base_host.trim().replace(/\/+$/, ""),
       description: bulkForm.description || null,
       notes: bulkForm.notes || null,
-      device_id: bulkForm.device_id || null,
     };
   }
 
@@ -249,7 +247,6 @@ export function useServers() {
         max_requests_queued: editForm.max_requests_queued,
         is_active: editForm.is_active,
         notes: editForm.notes || null,
-        device_id: editForm.device_id || null,
       };
       const updated = await apiRequest<Server>(
         `/v1/servers/${editingServerId}`,

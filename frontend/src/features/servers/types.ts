@@ -10,7 +10,6 @@ export type SingleServerForm = {
   max_requests_queued: number;
   is_active: boolean;
   notes: string;
-  device_id: string;
 };
 
 export const defaultSingleForm: SingleServerForm = {
@@ -23,7 +22,6 @@ export const defaultSingleForm: SingleServerForm = {
   max_requests_queued: 5,
   is_active: true,
   notes: "",
-  device_id: "",
 };
 
 export type BulkServerForm = {
@@ -37,7 +35,6 @@ export type BulkServerForm = {
   max_requests_queued: number;
   is_active: boolean;
   notes: string;
-  device_id: string;
 };
 
 export const defaultBulkForm: BulkServerForm = {
@@ -51,7 +48,6 @@ export const defaultBulkForm: BulkServerForm = {
   max_requests_queued: 5,
   is_active: true,
   notes: "",
-  device_id: "",
 };
 
 export type EditServerForm = {
@@ -62,7 +58,6 @@ export type EditServerForm = {
   max_requests_queued: number;
   is_active: boolean;
   notes: string;
-  device_id: string;
 };
 
 export function toEditServerForm(server: Server): EditServerForm {
@@ -74,6 +69,5 @@ export function toEditServerForm(server: Server): EditServerForm {
     max_requests_queued: server.max_requests_queued,
     is_active: server.is_active,
     notes: server.notes ?? "",
-    device_id: server.device_id ?? "",
   };
 }
