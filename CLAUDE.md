@@ -60,6 +60,8 @@ docker compose up --build
 Frontend dev server: http://localhost:5173
 Backend API: http://localhost:9914
 
+**Hot reload**: File changes are volume-mounted. Backend (uvicorn --reload) and orchestrator auto-restart on Python file changes. Frontend Vite dev server HMR's automatically.
+
 ### Running the Application
 
 ```bash
@@ -129,6 +131,13 @@ interrogate backend/app -c backend/pyproject.toml
 ```
 
 ## Architecture
+
+### Overview
+
+The system is a full-stack voucher management application with a worker orchestration layer:
+- **Backend**: FastAPI service managing servers, accounts, bindings, and transactions with external IDV API integration
+- **Frontend**: React dashboard for CRUD operations and monitoring
+- **Orchestrator**: Redis-backed worker service that runs automated voucher purchase loops on bindings
 
 ### Frontend Architecture
 
@@ -220,6 +229,7 @@ The codebase follows a clean layered architecture:
 - Sessions auto-rollback on exceptions
 - Repositories can flush without committing by using `commit=False` (default)
 - Service layer coordinates multi-step operations within a single transaction
+- Alembic migrations run automatically at app startup (see `lifespan()` in main.py)
 
 ### Frontend Hook Pattern
 
@@ -232,7 +242,32 @@ Custom hooks in `features/*/hooks/` encapsulate all business logic for a feature
 
 Example: `useServers()` hook manages all server CRUD operations, dialogs, form state, and selection state.
 
+### Orchestrator Service
+
+The orchestrator (`app/orchestrator_main.py`) manages worker loops for automated voucher transactions:
+- Redis-backed state management for worker coordination (locks, heartbeats, status)
+- Workers bind to specific bindings and execute transaction flows (balance → product purchase → OTP)
+- Control endpoints: start, pause, resume, stop workers (under `/v1/orchestration/`)
+- Monitor endpoint: `/v1/orchestration/monitor` returns worker state and heartbeat status
+- Hot-reload: orchestrator container auto-restarts on code changes during development
+
 ## Important Patterns
+
+### API Route Decoration Pattern
+
+**CRITICAL**: List endpoints must be decorated with BOTH `""` AND `"/"` to handle requests with and without trailing slashes:
+
+```python
+@router.get("", response_model=list[ModelRead])
+@router.get("/", response_model=list[ModelRead], include_in_schema=False)
+async def list_items(...):
+```
+
+- First decorator handles `/v1/resource` (no trailing slash)
+- Second decorator handles `/v1/resource/` (with trailing slash)
+- `include_in_schema=False` prevents duplicate OpenAPI docs
+
+Without both decorators, requests without trailing slash return 404. See `route_servers.py` and `route_accounts.py` for reference.
 
 ### Logging
 
