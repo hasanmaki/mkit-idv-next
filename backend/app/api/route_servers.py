@@ -18,7 +18,13 @@ from app.services.servers import (
 router = APIRouter()
 
 
-@router.post("/", response_model=ServerResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ServerResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=ServerResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def create_server(
     payload: ServerCreate,
     session: AsyncSession = Depends(get_db_session),
@@ -56,7 +62,8 @@ async def dry_run_servers_bulk(
     return await service.dry_run_servers_bulk(payload)
 
 
-@router.get("/", response_model=list[ServerResponse])
+@router.get("", response_model=list[ServerResponse])
+@router.get("/", response_model=list[ServerResponse], include_in_schema=False)
 async def list_servers(
     skip: int = 0,
     limit: int = 100,

@@ -34,12 +34,14 @@ RUN uv sync --no-install-project
 
 # Copy application source code
 COPY backend/app ./app
+COPY backend/mlog.yaml ./mlog.yaml
 
 # Install the project package
 RUN uv sync
 
 # Copy built frontend assets from builder stage
-COPY --from=frontend-builder /build/frontend /app/frontend
+# FastAPI serves this as static files at "/"
+COPY --from=frontend-builder /build/frontend/dist /app/frontend
 
 # Copy alembic migrations and config
 COPY alembic ./alembic

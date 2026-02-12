@@ -4,19 +4,30 @@ Voucher Management System with IDV Integration.
 
 ## Running the Project
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker (Prod-like)
 
 Requires Docker and Docker Compose.
 
 1. Build and run:
 
     ```bash
-    docker-compose up --build
+    docker compose up --build
     ```
 
 2. Open [http://localhost:9914](http://localhost:9914)
 
-### Option 2: Manual Setup
+### Option 2: Docker Development (Backend + Vite)
+
+1. Build and run:
+
+    ```bash
+    docker compose -f docker-compose.dev.yml up --build
+    ```
+
+2. Open frontend dev server at [http://localhost:5173](http://localhost:5173)
+3. API remains available at [http://localhost:9914](http://localhost:9914)
+
+### Option 3: Manual Setup
 
 **Frontend:**
 
@@ -32,12 +43,10 @@ Requires Docker and Docker Compose.
     npm install
     ```
 
-3. Build CSS (Watch mode for development):
+3. Run dev server:
 
     ```bash
-    npm run build
-    # OR for watch mode:
-    npm run watch
+    npm run dev
     ```
 
 **Backend:**
@@ -68,5 +77,5 @@ Requires Docker and Docker Compose.
 
 ## Architecture
 
-- **Frontend**: HTML/JS + TailwindCSS (Served by FastAPI)
+- **Frontend**: React + Vite + TypeScript + Tailwind + shadcn/ui
 - **Backend**: FastAPI + SQLAlchemy (Async)

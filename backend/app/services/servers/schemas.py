@@ -207,6 +207,7 @@ class ServerBulkItemResult(BaseModel):
 class ServerBulkCreateResult(BaseModel):
     """Summary result for bulk server creation."""
 
+    dry_run: bool = Field(..., examples=[False])
     base_host: str = Field(..., examples=["http://10.0.0.3"])
     start_port: int = Field(..., examples=[9900])
     end_port: int = Field(..., examples=[9909])

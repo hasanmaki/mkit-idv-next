@@ -17,9 +17,6 @@ services:
       - ./backend/logs:/app/logs
       # Bind mount database file (persist across restarts)
       - ./application.db:/app/application.db
-      # Development: bind mount source code for hot reload
-      - ./backend/app:/app/app:cached
-      - ./frontend:/app/frontend:cached
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:9914/health')"]
       interval: 30s
@@ -28,16 +25,6 @@ services:
       start_period: 10s
     networks:
       - mkit-network
-    # Uncomment for development with live reload watching
-    # develop:
-    #   watch:
-    #     - action: sync
-    #       path: ./backend/app
-    #       target: /app/app
-    #     - action: sync
-    #       path: ./frontend
-    #       target: /app/frontend
-
 networks:
   mkit-network:
     driver: bridge

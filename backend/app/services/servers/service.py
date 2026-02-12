@@ -140,6 +140,7 @@ class ServerService:
                 )
 
         result = ServerBulkCreateResult(
+            dry_run=False,
             base_host=data.base_host,
             start_port=data.start_port,
             end_port=data.end_port,
@@ -211,6 +212,7 @@ class ServerService:
             )
 
         return ServerBulkCreateResult(
+            dry_run=True,
             base_host=data.base_host,
             start_port=data.start_port,
             end_port=data.end_port,
@@ -328,3 +330,5 @@ class ServerService:
             )
         await self.repo.delete(self.session, server_id)
         logger.info("Server deleted successfully", extra={"server_id": server_id})
+
+        # TODO: add logic to check is theres a running transaction before deleting or deactivate
