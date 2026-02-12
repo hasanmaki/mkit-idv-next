@@ -9,6 +9,7 @@ import {
   type Binding,
   type BindingBulkPayload,
   type BindingBulkResult,
+  type BindingProductsPreviewResult,
   type BindingCreatePayload,
   type BindingFilters,
   type BindingLogoutPayload,
@@ -47,6 +48,8 @@ export function useBindings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
   const [bulkResult, setBulkResult] = useState<BindingBulkResult | null>(null);
+  const [productsPreviewResult, setProductsPreviewResult] =
+    useState<BindingProductsPreviewResult | null>(null);
 
   useEffect(() => {
     void loadBindings();
@@ -377,6 +380,34 @@ export function useBindings() {
     });
   }
 
+  async function previewProductsForSelected(
+    resellerOnly: boolean = true,
+  ): Promise<void> {
+    if (selectedBindingIds.length === 0) {
+      setProductsPreviewResult(null);
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const result = await apiRequest<BindingProductsPreviewResult>(
+        "/v1/bindings/products/preview",
+        "POST",
+        {
+          binding_ids: selectedBindingIds,
+          reseller_only: resellerOnly,
+        },
+      );
+      setProductsPreviewResult(result);
+      toast.success("Product preview loaded.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error("Load product preview gagal.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return {
     bindings,
     selectedBindingIds,
@@ -388,6 +419,7 @@ export function useBindings() {
     isLoading,
     isSubmitting,
     bulkResult,
+    productsPreviewResult,
     pendingRowActions,
     activeCount,
     selectedCount,
@@ -414,5 +446,6 @@ export function useBindings() {
     bulkLogout,
     bulkDelete,
     bulkVerifyReseller,
+    previewProductsForSelected,
   };
 }

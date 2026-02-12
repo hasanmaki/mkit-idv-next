@@ -180,3 +180,48 @@ class BindingBulkResult(BaseModel):
     items: list[BindingBulkItemResult]
 
     model_config = {"use_enum_values": True}
+
+
+class BindingProductsPreviewRequest(BaseModel):
+    """Request payload to fetch product lists for selected bindings."""
+
+    binding_ids: list[int] = Field(..., min_length=1, max_length=500)
+    reseller_only: bool = Field(True, examples=[True])
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingProductItem(BaseModel):
+    """Single product item from provider list response."""
+
+    id: int | None = Field(None, examples=[650])
+    name: str | None = Field(None, examples=["IDV Voucher Rp. 100.000"])
+    lower_price: int | None = Field(None, examples=[100000])
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingProductsPreviewItem(BaseModel):
+    """Per-binding products preview item."""
+
+    binding_id: int = Field(..., examples=[1])
+    account_id: int = Field(..., examples=[100])
+    msisdn: str = Field(..., examples=["085773197010"])
+    is_reseller: bool = Field(..., examples=[True])
+    status: str = Field(..., examples=["ok", "skipped", "failed"])
+    reason: str | None = Field(None, examples=["binding_not_reseller"])
+    products: list[BindingProductItem] = Field(default_factory=list)
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingProductsPreviewResult(BaseModel):
+    """Response payload for selected bindings product preview."""
+
+    total_requested: int = Field(..., examples=[10])
+    total_ok: int = Field(..., examples=[8])
+    total_skipped: int = Field(..., examples=[1])
+    total_failed: int = Field(..., examples=[1])
+    items: list[BindingProductsPreviewItem]
+
+    model_config = {"use_enum_values": True}

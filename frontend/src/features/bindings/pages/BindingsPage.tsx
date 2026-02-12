@@ -105,6 +105,7 @@ export function BindingsPage() {
   const [bulkStopOnFirstError, setBulkStopOnFirstError] = useState(false);
   const [bulkPin, setBulkPin] = useState("");
   const [otpQueue, setOtpQueue] = useState<Record<number, string>>({});
+  const [isProductsPreviewOpen, setIsProductsPreviewOpen] = useState(false);
 
   async function onCreateBinding(): Promise<void> {
     if (!createForm.server_id || !createForm.account_id) {
@@ -243,6 +244,11 @@ export function BindingsPage() {
     await vm.bulkVerifyReseller();
   }
 
+  async function onPreviewProducts(): Promise<void> {
+    await vm.previewProductsForSelected(true);
+    setIsProductsPreviewOpen(true);
+  }
+
   function buildOtpQueueBindings(): Binding[] {
     return vm.bindings.filter(
       (binding) =>
@@ -367,6 +373,14 @@ export function BindingsPage() {
               onClick={() => void onBulkVerifyReseller()}
             >
               Bulk Verify Reseller
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onPreviewProducts()}
+            >
+              Preview Products
             </Button>
             <div className="flex items-center gap-2">
               <Label htmlFor="bulk-pin">PIN (opsional)</Label>
@@ -554,6 +568,54 @@ export function BindingsPage() {
             </Button>
             <Button onClick={() => void onBulkCreate()} disabled={vm.isSubmitting}>
               Save Bulk
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isProductsPreviewOpen} onOpenChange={setIsProductsPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Products Preview (Reseller Only)</DialogTitle>
+            <DialogDescription>
+              Requested: {vm.productsPreviewResult?.total_requested ?? 0} | OK:{" "}
+              {vm.productsPreviewResult?.total_ok ?? 0} | Skipped:{" "}
+              {vm.productsPreviewResult?.total_skipped ?? 0} | Failed:{" "}
+              {vm.productsPreviewResult?.total_failed ?? 0}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[420px] overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Binding</TableHead>
+                  <TableHead>MSISDN</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Products</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(vm.productsPreviewResult?.items ?? []).map((item) => (
+                  <TableRow key={`preview-${item.binding_id}`}>
+                    <TableCell>#{item.binding_id}</TableCell>
+                    <TableCell className="font-mono text-xs">{item.msisdn}</TableCell>
+                    <TableCell>{item.status}</TableCell>
+                    <TableCell className="text-xs">
+                      {item.products.length > 0
+                        ? item.products
+                            .slice(0, 5)
+                            .map((product) => `${product.id ?? "-"}:${product.name ?? "-"}`)
+                            .join(" | ")
+                        : item.reason ?? "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsProductsPreviewOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

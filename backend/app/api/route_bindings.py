@@ -11,6 +11,8 @@ from app.services.bindings import (
     BindingBulkResult,
     BindingCreate,
     BindingLogout,
+    BindingProductsPreviewRequest,
+    BindingProductsPreviewResult,
     BindingRead,
     BindingRequestLogin,
     BindingService,
@@ -44,6 +46,16 @@ async def bulk_create_bindings(
     """Create bindings in bulk mode."""
     service = BindingService(session)
     return await service.bulk_create_bindings(payload)
+
+
+@router.post("/products/preview", response_model=BindingProductsPreviewResult)
+async def preview_products(
+    payload: BindingProductsPreviewRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> BindingProductsPreviewResult:
+    """Runtime fetch product list for selected bindings."""
+    service = BindingService(session)
+    return await service.preview_products(payload)
 
 
 @router.post("", response_model=BindingRead, status_code=status.HTTP_201_CREATED)

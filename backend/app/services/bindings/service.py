@@ -18,6 +18,10 @@ from app.repos.server_repo import ServerRepository
 from app.services.bindings.schemas import (
     BindingBulkItemInput,
     BindingBulkItemResult,
+    BindingProductItem,
+    BindingProductsPreviewItem,
+    BindingProductsPreviewRequest,
+    BindingProductsPreviewResult,
     BindingBulkRequest,
     BindingBulkResult,
     BindingCreate,
@@ -842,6 +846,134 @@ class BindingService:
             last_device_id=detected_device_id or account.last_device_id,
         )
         return updated
+
+    async def preview_products(
+        self, payload: BindingProductsPreviewRequest
+    ) -> BindingProductsPreviewResult:
+        """Fetch product list runtime for selected bindings."""
+        items: list[BindingProductsPreviewItem] = []
+        total_ok = 0
+        total_skipped = 0
+        total_failed = 0
+
+        for binding_id in payload.binding_ids:
+            binding = await self.bindings.get(self.session, binding_id)
+            if not binding:
+                total_failed += 1
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=0,
+                        msisdn="-",
+                        is_reseller=False,
+                        status="failed",
+                        reason="binding_not_found",
+                        products=[],
+                    )
+                )
+                continue
+
+            account = await self.accounts.get(self.session, binding.account_id)
+            if not account:
+                total_failed += 1
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=binding.account_id,
+                        msisdn="-",
+                        is_reseller=False,
+                        status="failed",
+                        reason="account_not_found",
+                        products=[],
+                    )
+                )
+                continue
+
+            if payload.reseller_only and not binding.is_reseller:
+                total_skipped += 1
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=account.id,
+                        msisdn=account.msisdn,
+                        is_reseller=binding.is_reseller,
+                        status="skipped",
+                        reason="binding_not_reseller",
+                        products=[],
+                    )
+                )
+                continue
+
+            server = await self.servers.get(self.session, binding.server_id)
+            if not server:
+                total_failed += 1
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=account.id,
+                        msisdn=account.msisdn,
+                        is_reseller=binding.is_reseller,
+                        status="failed",
+                        reason="server_not_found",
+                        products=[],
+                    )
+                )
+                continue
+
+            try:
+                idv = IdvService.from_server(server)
+                products_resp = await idv.list_produk(account.msisdn)
+                product_list = (
+                    products_resp.get("data", {}).get("product_list", [])
+                    if isinstance(products_resp, dict)
+                    else []
+                )
+                products = [
+                    BindingProductItem(
+                        id=item.get("id"),
+                        name=item.get("name"),
+                        lower_price=(
+                            int(item.get("lower_price"))
+                            if str(item.get("lower_price", "")).isdigit()
+                            else None
+                        ),
+                    )
+                    for item in product_list
+                    if isinstance(item, dict)
+                ]
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=account.id,
+                        msisdn=account.msisdn,
+                        is_reseller=binding.is_reseller,
+                        status="ok",
+                        reason=None,
+                        products=products,
+                    )
+                )
+                total_ok += 1
+            except Exception as exc:
+                total_failed += 1
+                items.append(
+                    BindingProductsPreviewItem(
+                        binding_id=binding_id,
+                        account_id=account.id,
+                        msisdn=account.msisdn,
+                        is_reseller=binding.is_reseller,
+                        status="failed",
+                        reason=str(exc),
+                        products=[],
+                    )
+                )
+
+        return BindingProductsPreviewResult(
+            total_requested=len(payload.binding_ids),
+            total_ok=total_ok,
+            total_skipped=total_skipped,
+            total_failed=total_failed,
+            items=items,
+        )
 
     async def delete_binding(self, binding_id: int) -> None:
         """Delete binding by ID."""

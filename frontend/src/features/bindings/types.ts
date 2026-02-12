@@ -100,6 +100,30 @@ export type BindingBulkResult = {
   items: BindingBulkItemResult[];
 };
 
+export type BindingPreviewProductItem = {
+  id: number | null;
+  name: string | null;
+  lower_price: number | null;
+};
+
+export type BindingProductsPreviewItem = {
+  binding_id: number;
+  account_id: number;
+  msisdn: string;
+  is_reseller: boolean;
+  status: "ok" | "skipped" | "failed";
+  reason: string | null;
+  products: BindingPreviewProductItem[];
+};
+
+export type BindingProductsPreviewResult = {
+  total_requested: number;
+  total_ok: number;
+  total_skipped: number;
+  total_failed: number;
+  items: BindingProductsPreviewItem[];
+};
+
 export type BindingLogoutPayload = {
   account_status?: AccountStatus | null;
   last_error_code?: string | null;
