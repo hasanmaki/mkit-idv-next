@@ -1,14 +1,17 @@
 import {
+  BadgeCheck,
   KeyRound,
   Loader2,
   LogOut,
   MoreHorizontal,
+  RefreshCw,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,8 +41,14 @@ function badgeVariant(step: Binding["step"]): "default" | "secondary" | "destruc
 
 type BindingsTableProps = {
   bindings: Binding[];
+  selectedBindingIds: number[];
+  allSelected: boolean;
   isLoading: boolean;
   pendingRowActions: Record<number, string>;
+  onToggleSelectAll: (checked: boolean) => void;
+  onToggleSelectBinding: (bindingId: number, checked: boolean) => void;
+  onCheckBalance: (bindingId: number) => void;
+  onRefreshTokenLocation: (bindingId: number) => void;
   onOpenRequestLogin: (binding: Binding) => void;
   onOpenVerify: (binding: Binding) => void;
   onOpenLogout: (binding: Binding) => void;
@@ -48,8 +57,14 @@ type BindingsTableProps = {
 
 export function BindingsTable({
   bindings,
+  selectedBindingIds,
+  allSelected,
   isLoading,
   pendingRowActions,
+  onToggleSelectAll,
+  onToggleSelectBinding,
+  onCheckBalance,
+  onRefreshTokenLocation,
   onOpenRequestLogin,
   onOpenVerify,
   onOpenLogout,
@@ -60,6 +75,12 @@ export function BindingsTable({
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[42px]">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))}
+              />
+            </TableHead>
             <TableHead className="w-[80px]">ID</TableHead>
             <TableHead className="w-[220px]">Server</TableHead>
             <TableHead className="w-[220px]">Account</TableHead>
@@ -74,13 +95,13 @@ export function BindingsTable({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={10} className="text-center text-muted-foreground">
                 Loading bindings...
               </TableCell>
             </TableRow>
           ) : bindings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={10} className="text-center text-muted-foreground">
                 Belum ada binding.
               </TableCell>
             </TableRow>
@@ -90,6 +111,14 @@ export function BindingsTable({
               const isBusy = Boolean(rowAction);
               return (
                 <TableRow key={binding.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedBindingIds.includes(binding.id)}
+                      onCheckedChange={(checked) =>
+                        onToggleSelectBinding(binding.id, Boolean(checked))
+                      }
+                    />
+                  </TableCell>
                   <TableCell>#{binding.id}</TableCell>
                   <TableCell className="truncate text-xs">
                     {binding.server_base_url ? (
@@ -130,6 +159,12 @@ export function BindingsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onCheckBalance(binding.id)}>
+                          <BadgeCheck className="mr-2 h-4 w-4" /> Check Balance
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onRefreshTokenLocation(binding.id)}>
+                          <RefreshCw className="mr-2 h-4 w-4" /> Refresh Token Location
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onOpenRequestLogin(binding)}>
                           <KeyRound className="mr-2 h-4 w-4" /> Request Login
                         </DropdownMenuItem>

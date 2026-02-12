@@ -38,6 +38,7 @@ function buildQuery(filters: BindingFilters): string {
 
 export function useBindings() {
   const [bindings, setBindings] = useState<Binding[]>([]);
+  const [selectedBindingIds, setSelectedBindingIds] = useState<number[]>([]);
   const [serverOptions, setServerOptions] = useState<ServerOption[]>([]);
   const [accountOptions, setAccountOptions] = useState<AccountOption[]>([]);
   const [filters, setFilters] = useState<BindingFilters>(defaultBindingFilters);
@@ -57,6 +58,9 @@ export function useBindings() {
     () => bindings.filter((item) => item.unbound_at === null).length,
     [bindings],
   );
+  const selectedCount = selectedBindingIds.length;
+  const allSelected =
+    bindings.length > 0 && selectedBindingIds.length === bindings.length;
 
   function markRowAction(bindingId: number, action: string): void {
     setPendingRowActions((previous) => ({ ...previous, [bindingId]: action }));
@@ -79,6 +83,9 @@ export function useBindings() {
         "GET",
       );
       setBindings(payload);
+      setSelectedBindingIds((previous) =>
+        previous.filter((id) => payload.some((item) => item.id === id)),
+      );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
       toast.error("Gagal memuat bindings.");
@@ -108,6 +115,18 @@ export function useBindings() {
   async function resetFilters(): Promise<void> {
     setFilters(defaultBindingFilters);
     await loadBindings(defaultBindingFilters);
+  }
+
+  function toggleSelectAll(checked: boolean): void {
+    setSelectedBindingIds(checked ? bindings.map((binding) => binding.id) : []);
+  }
+
+  function toggleSelectBinding(bindingId: number, checked: boolean): void {
+    if (checked) {
+      setSelectedBindingIds((previous) => [...new Set([...previous, bindingId])]);
+      return;
+    }
+    setSelectedBindingIds((previous) => previous.filter((id) => id !== bindingId));
   }
 
   async function createBinding(payload: BindingCreatePayload): Promise<void> {
@@ -161,6 +180,39 @@ export function useBindings() {
     }
   }
 
+  async function checkBalanceBinding(bindingId: number): Promise<void> {
+    try {
+      setErrorMessage(null);
+      markRowAction(bindingId, "check_balance");
+      await apiRequest<Binding>(`/v1/bindings/${bindingId}/check-balance`, "POST");
+      toast.success(`Balance checked for binding #${bindingId}.`);
+      await loadBindings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error(`Check balance binding #${bindingId} gagal.`);
+    } finally {
+      clearRowAction(bindingId);
+    }
+  }
+
+  async function refreshTokenLocationBinding(bindingId: number): Promise<void> {
+    try {
+      setErrorMessage(null);
+      markRowAction(bindingId, "refresh_token");
+      await apiRequest<Binding>(
+        `/v1/bindings/${bindingId}/refresh-token-location`,
+        "POST",
+      );
+      toast.success(`Token location refreshed for binding #${bindingId}.`);
+      await loadBindings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error(`Refresh token location binding #${bindingId} gagal.`);
+    } finally {
+      clearRowAction(bindingId);
+    }
+  }
+
   async function logoutBinding(
     bindingId: number,
     payload: BindingLogoutPayload,
@@ -185,6 +237,7 @@ export function useBindings() {
       markRowAction(bindingId, "delete");
       await apiRequest<void>(`/v1/bindings/${bindingId}`, "DELETE");
       setBindings((previous) => previous.filter((binding) => binding.id !== bindingId));
+      setSelectedBindingIds((previous) => previous.filter((id) => id !== bindingId));
       toast.success(`Binding #${bindingId} deleted.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
@@ -235,8 +288,77 @@ export function useBindings() {
     }
   }
 
+  async function runBulkSelected(
+    actionName: string,
+    runner: (bindingId: number) => Promise<void>,
+  ): Promise<void> {
+    if (selectedBindingIds.length === 0) {
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const failures: string[] = [];
+      for (const bindingId of selectedBindingIds) {
+        try {
+          await runner(bindingId);
+        } catch (error) {
+          failures.push(
+            error instanceof Error
+              ? `ID ${bindingId}: ${error.message}`
+              : `ID ${bindingId}: unknown error`,
+          );
+        }
+      }
+      if (failures.length > 0) {
+        setErrorMessage(`Bulk ${actionName} sebagian gagal. ${failures.join(" | ")}`);
+        toast.warning(`Bulk ${actionName} selesai dengan ${failures.length} gagal.`);
+      } else {
+        toast.success(`Bulk ${actionName} selesai.`);
+      }
+      await loadBindings();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function bulkCheckBalance(): Promise<void> {
+    await runBulkSelected("check balance", async (bindingId) => {
+      await apiRequest<Binding>(`/v1/bindings/${bindingId}/check-balance`, "POST");
+    });
+  }
+
+  async function bulkRefreshTokenLocation(): Promise<void> {
+    await runBulkSelected("refresh token", async (bindingId) => {
+      await apiRequest<Binding>(
+        `/v1/bindings/${bindingId}/refresh-token-location`,
+        "POST",
+      );
+    });
+  }
+
+  async function bulkRequestLogin(pin: string | null): Promise<void> {
+    await runBulkSelected("request login", async (bindingId) => {
+      await apiRequest(`/v1/bindings/${bindingId}/request-login`, "POST", { pin });
+    });
+  }
+
+  async function bulkLogout(payload: BindingLogoutPayload): Promise<void> {
+    await runBulkSelected("logout", async (bindingId) => {
+      await apiRequest<Binding>(`/v1/bindings/${bindingId}/logout`, "POST", payload);
+    });
+  }
+
+  async function bulkDelete(): Promise<void> {
+    await runBulkSelected("delete", async (bindingId) => {
+      await apiRequest<void>(`/v1/bindings/${bindingId}`, "DELETE");
+    });
+    setSelectedBindingIds([]);
+  }
+
   return {
     bindings,
+    selectedBindingIds,
     serverOptions,
     accountOptions,
     filters,
@@ -247,16 +369,27 @@ export function useBindings() {
     bulkResult,
     pendingRowActions,
     activeCount,
+    selectedCount,
+    allSelected,
     loadBindings,
     loadBindingOptions,
     applyFilters,
     resetFilters,
+    toggleSelectAll,
+    toggleSelectBinding,
     createBinding,
     dryRunBulkBindings,
     createBulkBindings,
     requestBindingLogin,
+    checkBalanceBinding,
+    refreshTokenLocationBinding,
     verifyBinding,
     logoutBinding,
     deleteBinding,
+    bulkCheckBalance,
+    bulkRefreshTokenLocation,
+    bulkRequestLogin,
+    bulkLogout,
+    bulkDelete,
   };
 }

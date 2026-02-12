@@ -87,6 +87,8 @@ export function BindingsPage() {
   );
   const [bulkRawText, setBulkRawText] = useState("");
   const [bulkStopOnFirstError, setBulkStopOnFirstError] = useState(false);
+  const [bulkPin, setBulkPin] = useState("");
+  const [otpQueue, setOtpQueue] = useState<Record<number, string>>({});
 
   async function onCreateBinding(): Promise<void> {
     if (!createForm.server_id || !createForm.account_id) {
@@ -197,6 +199,49 @@ export function BindingsPage() {
     });
   }
 
+  async function onBulkRequestLogin(): Promise<void> {
+    await vm.bulkRequestLogin(bulkPin.trim() || null);
+  }
+
+  async function onBulkCheckBalance(): Promise<void> {
+    await vm.bulkCheckBalance();
+  }
+
+  async function onBulkRefreshToken(): Promise<void> {
+    await vm.bulkRefreshTokenLocation();
+  }
+
+  async function onBulkLogout(): Promise<void> {
+    await vm.bulkLogout({
+      account_status: "exhausted",
+      last_error_code: "bulk_logout",
+      last_error_message: "Bulk logout",
+    });
+  }
+
+  async function onBulkDelete(): Promise<void> {
+    await vm.bulkDelete();
+  }
+
+  function buildOtpQueueBindings(): Binding[] {
+    return vm.bindings.filter(
+      (binding) =>
+        vm.selectedBindingIds.includes(binding.id) && binding.step === "otp_requested",
+    );
+  }
+
+  async function submitOtpQueue(): Promise<void> {
+    const queue = buildOtpQueueBindings();
+    for (const binding of queue) {
+      const otp = (otpQueue[binding.id] ?? "").trim();
+      if (!otp) {
+        continue;
+      }
+      await vm.verifyBinding(binding.id, { otp });
+    }
+    setOtpQueue({});
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -262,15 +307,118 @@ export function BindingsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
+            <span className="text-sm font-medium">
+              Selected: {vm.selectedCount}
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onBulkCheckBalance()}
+            >
+              Bulk Check Balance
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onBulkRefreshToken()}
+            >
+              Bulk Refresh Token
+            </Button>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="bulk-pin">PIN (opsional)</Label>
+              <input
+                id="bulk-pin"
+                className="h-8 w-36 rounded-md border bg-background px-2 text-sm"
+                value={bulkPin}
+                onChange={(event) => setBulkPin(event.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={vm.selectedCount === 0 || vm.isSubmitting}
+                onClick={() => void onBulkRequestLogin()}
+              >
+                Bulk Request Login
+              </Button>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onBulkLogout()}
+            >
+              Bulk Logout
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onBulkDelete()}
+            >
+              Bulk Delete
+            </Button>
+          </div>
           <BindingsTable
             bindings={vm.bindings}
+            selectedBindingIds={vm.selectedBindingIds}
+            allSelected={vm.allSelected}
             isLoading={vm.isLoading}
             pendingRowActions={vm.pendingRowActions}
+            onToggleSelectAll={vm.toggleSelectAll}
+            onToggleSelectBinding={vm.toggleSelectBinding}
+            onCheckBalance={(bindingId) => void vm.checkBalanceBinding(bindingId)}
+            onRefreshTokenLocation={(bindingId) =>
+              void vm.refreshTokenLocationBinding(bindingId)
+            }
             onOpenRequestLogin={openRequestLogin}
             onOpenVerify={openVerify}
             onOpenLogout={openLogout}
             onDelete={(bindingId) => void vm.deleteBinding(bindingId)}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>OTP Queue</CardTitle>
+          <CardDescription>
+            Khusus selected bindings dengan step <code>otp_requested</code>.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {buildOtpQueueBindings().length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Tidak ada selected binding di step otp_requested.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {buildOtpQueueBindings().map((binding) => (
+                <div key={binding.id} className="flex items-center gap-2">
+                  <span className="w-14 text-sm">#{binding.id}</span>
+                  <span className="w-64 truncate font-mono text-xs">
+                    {binding.account_msisdn ?? binding.account_id}
+                  </span>
+                  <input
+                    className="h-8 w-40 rounded-md border bg-background px-2 text-sm"
+                    placeholder="OTP"
+                    value={otpQueue[binding.id] ?? ""}
+                    onChange={(event) =>
+                      setOtpQueue((prev) => ({ ...prev, [binding.id]: event.target.value }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <Button
+            disabled={buildOtpQueueBindings().length === 0 || vm.isSubmitting}
+            onClick={() => void submitOtpQueue()}
+          >
+            Submit OTP Queue
+          </Button>
         </CardContent>
       </Card>
 

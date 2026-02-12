@@ -154,6 +154,26 @@ async def request_login(
     return await service.request_login(binding_id, payload)
 
 
+@router.post("/{binding_id}/check-balance", response_model=BindingRead)
+async def check_balance(
+    binding_id: int,
+    session: AsyncSession = Depends(get_db_session),
+) -> Bindings:
+    """Check latest balance for a binding and persist it."""
+    service = BindingService(session)
+    return await service.check_balance(binding_id)
+
+
+@router.post("/{binding_id}/refresh-token-location", response_model=BindingRead)
+async def refresh_token_location(
+    binding_id: int,
+    session: AsyncSession = Depends(get_db_session),
+) -> Bindings:
+    """Refresh token_location for a binding and persist it."""
+    service = BindingService(session)
+    return await service.refresh_token_location(binding_id)
+
+
 @router.post("/{binding_id}/verify-login")
 async def verify_login(
     binding_id: int,

@@ -658,6 +658,87 @@ class BindingService:
         """Dry-run bulk binding creation without writes."""
         return await self._build_bulk_result(payload, dry_run=True)
 
+    async def check_balance(self, binding_id: int) -> Bindings:
+        """Fetch latest balance and persist it to binding/account."""
+        binding = await self.bindings.get(self.session, binding_id)
+        if not binding:
+            raise AppNotFoundError(
+                message=f"Binding ID {binding_id} tidak ditemukan.",
+                error_code="binding_not_found",
+                context={"binding_id": binding_id},
+            )
+
+        account = await self.accounts.get(self.session, binding.account_id)
+        if not account:
+            raise AppNotFoundError(
+                message=f"Account ID {binding.account_id} tidak ditemukan.",
+                error_code="account_not_found",
+                context={"account_id": binding.account_id},
+            )
+
+        server = await self.servers.get(self.session, binding.server_id)
+        if not server:
+            raise AppNotFoundError(
+                message=f"Server ID {binding.server_id} tidak ditemukan.",
+                error_code="server_not_found",
+                context={"server_id": binding.server_id},
+            )
+
+        idv = IdvService.from_server(server)
+        balance_resp = await idv.get_balance_pulsa(account.msisdn)
+        balance_value = (
+            balance_resp.get("res", {}).get("balance")
+            if isinstance(balance_resp, dict)
+            else None
+        )
+        try:
+            balance_int = int(balance_value) if balance_value is not None else None
+        except ValueError:
+            balance_int = None
+
+        updated = await self.bindings.update(
+            self.session, binding, balance_last=balance_int
+        )
+        await self.accounts.update(self.session, account, balance_last=balance_int)
+        return updated
+
+    async def refresh_token_location(self, binding_id: int) -> Bindings:
+        """Refresh token_location and persist it on binding."""
+        binding = await self.bindings.get(self.session, binding_id)
+        if not binding:
+            raise AppNotFoundError(
+                message=f"Binding ID {binding_id} tidak ditemukan.",
+                error_code="binding_not_found",
+                context={"binding_id": binding_id},
+            )
+
+        account = await self.accounts.get(self.session, binding.account_id)
+        if not account:
+            raise AppNotFoundError(
+                message=f"Account ID {binding.account_id} tidak ditemukan.",
+                error_code="account_not_found",
+                context={"account_id": binding.account_id},
+            )
+
+        server = await self.servers.get(self.session, binding.server_id)
+        if not server:
+            raise AppNotFoundError(
+                message=f"Server ID {binding.server_id} tidak ditemukan.",
+                error_code="server_not_found",
+                context={"server_id": binding.server_id},
+            )
+
+        idv = IdvService.from_server(server)
+        token_location_resp = await idv.get_token_location3(account.msisdn)
+        token_location = (
+            token_location_resp.get("token")
+            if isinstance(token_location_resp, dict)
+            else token_location_resp
+        )
+        return await self.bindings.update(
+            self.session, binding, token_location=token_location
+        )
+
     async def delete_binding(self, binding_id: int) -> None:
         """Delete binding by ID."""
         deleted = await self.bindings.delete(self.session, binding_id)

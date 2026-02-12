@@ -1,0 +1,278 @@
+{
+  "version": "2.7",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": -309,
+      "y": -260.2112512620728,
+      "name": "Login Page",
+      "rotation": 0.27011673035548167,
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "#0f172a",
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "dNSum",
+          "name": "Login Card",
+          "width": 400,
+          "fill": "#1e293b",
+          "cornerRadius": 12,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#00000040",
+            "offset": {
+              "x": 0,
+              "y": 4
+            },
+            "blur": 24
+          },
+          "layout": "vertical",
+          "gap": 24,
+          "padding": 40,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Od3s0",
+              "name": "Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xo2yn",
+                  "name": "Title",
+                  "fill": "#f8fafc",
+                  "content": "Welcome back",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "1Ay5d",
+                  "name": "Subtitle",
+                  "fill": "#94a3b8",
+                  "content": "Sign in to your account to continue",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kWnfE",
+              "name": "Form",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "3nmXz",
+                  "name": "Email Label",
+                  "fill": "#f1f5f9",
+                  "content": "Email",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "gSBfO",
+                  "name": "Email Input",
+                  "width": "fill_container",
+                  "height": 36,
+                  "fill": "#0f172a80",
+                  "cornerRadius": 6,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#334155"
+                  },
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "q6uPX",
+                      "name": "Email Placeholder",
+                      "fill": "#64748b",
+                      "content": "Enter your email",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kruvg",
+                  "name": "Password Label",
+                  "fill": "#f1f5f9",
+                  "content": "Password",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "20eHj",
+                  "name": "Password Input",
+                  "width": "fill_container",
+                  "height": 36,
+                  "fill": "#0f172a80",
+                  "cornerRadius": 6,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#334155"
+                  },
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TUkor",
+                      "name": "Password Placeholder",
+                      "fill": "#64748b",
+                      "content": "Enter your password",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "TxXKV",
+                  "name": "Forgot Password",
+                  "fill": "#6366f1",
+                  "content": "Forgot password?",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pjtua",
+              "name": "Submit Button",
+              "width": "fill_container",
+              "height": 36,
+              "fill": "#6366f1",
+              "cornerRadius": 6,
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#6366f140",
+                "offset": {
+                  "x": 0,
+                  "y": 2
+                },
+                "blur": 8
+              },
+              "layout": "vertical",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QvRmk",
+                  "name": "Submit Text",
+                  "fill": "#ffffff",
+                  "content": "Sign in",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wnwH0",
+              "name": "Divider",
+              "width": "fill_container",
+              "gap": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "ZKMv7",
+                  "name": "Divider Left",
+                  "fill": "#334155",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "XumcP",
+                  "name": "Divider Text",
+                  "fill": "#94a3b8",
+                  "content": "or",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "pTdp1",
+                  "name": "Divider Right",
+                  "fill": "#334155",
+                  "width": "fill_container",
+                  "height": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iiyiH",
+              "name": "Signup Prompt",
+              "width": "fill_container",
+              "gap": 4,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RUCgO",
+                  "name": "Signup Text",
+                  "fill": "#94a3b8",
+                  "content": "Don't have an account?",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "meGvD",
+                  "name": "Signup Link",
+                  "fill": "#6366f1",
+                  "content": "Sign up",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
