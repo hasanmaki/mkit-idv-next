@@ -103,3 +103,19 @@ export const ACCOUNT_STATUSES: AccountStatus[] = [
   "exhausted",
   "disabled",
 ];
+
+export type AccountFilters = {
+  msisdn: string;
+  email: string;
+  batch_id: string;
+  status: AccountStatus | "";
+  is_reseller: "" | "true" | "false";
+};
+
+export const defaultAccountFilters: AccountFilters = {
+  msisdn: "",
+  email: "",
+  batch_id: "",
+  status: "",
+  is_reseller: "",
+};

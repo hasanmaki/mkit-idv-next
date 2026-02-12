@@ -50,7 +50,6 @@ export function useServers() {
   const allSelected = servers.length > 0 && selectedServerIds.length === servers.length;
 
   useEffect(() => {
-    document.documentElement.classList.add("dark");
     void loadServers();
   }, []);
 

@@ -27,6 +27,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   BulkAccountFormFields,
@@ -35,6 +44,7 @@ import {
 } from "../components/AccountForms";
 import { AccountsTable } from "../components/AccountsTable";
 import { useAccounts } from "../hooks/useAccounts";
+import { ACCOUNT_STATUSES } from "../types";
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
@@ -132,6 +142,103 @@ export function AccountsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Search & Filter</CardTitle>
+          <CardDescription>Filter account berdasarkan batch, msisdn, email, status, reseller.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-5">
+            <div className="space-y-2">
+              <Label htmlFor="filter-msisdn">MSISDN</Label>
+              <Input
+                id="filter-msisdn"
+                value={vm.filters.msisdn}
+                onChange={(event) =>
+                  vm.setFilters((prev) => ({ ...prev, msisdn: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filter-email">Email</Label>
+              <Input
+                id="filter-email"
+                value={vm.filters.email}
+                onChange={(event) =>
+                  vm.setFilters((prev) => ({ ...prev, email: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filter-batch">Batch ID</Label>
+              <Input
+                id="filter-batch"
+                value={vm.filters.batch_id}
+                onChange={(event) =>
+                  vm.setFilters((prev) => ({ ...prev, batch_id: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={vm.filters.status || "__all__"}
+                onValueChange={(value) =>
+                  vm.setFilters((prev) => ({
+                    ...prev,
+                    status: value === "__all__" ? "" : (value as typeof prev.status),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All</SelectItem>
+                  {ACCOUNT_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Reseller</Label>
+              <Select
+                value={vm.filters.is_reseller || "__all__"}
+                onValueChange={(value) =>
+                  vm.setFilters((prev) => ({
+                    ...prev,
+                    is_reseller:
+                      value === "__all__"
+                        ? ""
+                        : (value as typeof prev.is_reseller),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All</SelectItem>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => void vm.applyFilters()}>
+              Apply
+            </Button>
+            <Button variant="outline" onClick={() => void vm.resetFilters()}>
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

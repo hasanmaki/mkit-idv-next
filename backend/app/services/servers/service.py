@@ -114,7 +114,6 @@ class ServerService:
                     max_requests_queued=data.max_requests_queued,
                     is_active=data.is_active,
                     notes=data.notes,
-                    device_id=data.device_id,
                 )
                 created_count += 1
                 items.append(

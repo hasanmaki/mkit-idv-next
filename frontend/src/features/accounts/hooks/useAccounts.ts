@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { apiRequest } from "@/lib/api";
 
 import {
+  defaultAccountFilters,
   defaultAccountBulkForm,
   defaultAccountSingleForm,
   toAccountEditForm,
@@ -13,6 +14,7 @@ import {
   type AccountCreateSinglePayload,
   type AccountDeletePayload,
   type AccountEditForm,
+  type AccountFilters,
   type AccountSingleForm,
   type AccountUpdatePayload,
 } from "../types";
@@ -33,6 +35,7 @@ export function useAccounts() {
   const [singleForm, setSingleForm] = useState<AccountSingleForm>(defaultAccountSingleForm);
   const [bulkForm, setBulkForm] = useState<AccountBulkForm>(defaultAccountBulkForm);
   const [editForm, setEditForm] = useState<AccountEditForm | null>(null);
+  const [filters, setFilters] = useState<AccountFilters>(defaultAccountFilters);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
@@ -48,6 +51,7 @@ export function useAccounts() {
 
   useEffect(() => {
     void loadAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function upsertAccount(nextAccount: Account): void {
@@ -79,11 +83,35 @@ export function useAccounts() {
     });
   }
 
-  async function loadAccounts(): Promise<void> {
+  function buildFilterQuery(nextFilters: AccountFilters): string {
+    const params = new URLSearchParams();
+    if (nextFilters.msisdn.trim()) {
+      params.set("msisdn", nextFilters.msisdn.trim());
+    }
+    if (nextFilters.email.trim()) {
+      params.set("email", nextFilters.email.trim());
+    }
+    if (nextFilters.batch_id.trim()) {
+      params.set("batch_id", nextFilters.batch_id.trim());
+    }
+    if (nextFilters.status) {
+      params.set("status_filter", nextFilters.status);
+    }
+    if (nextFilters.is_reseller) {
+      params.set("is_reseller", nextFilters.is_reseller);
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }
+
+  async function loadAccounts(nextFilters: AccountFilters = filters): Promise<void> {
     try {
       setIsLoadingAccounts(true);
       setErrorMessage(null);
-      const payload = await apiRequest<Account[]>("/v1/accounts", "GET");
+      const payload = await apiRequest<Account[]>(
+        `/v1/accounts${buildFilterQuery(nextFilters)}`,
+        "GET",
+      );
       setAccounts(payload);
       setSelectedAccountIds((previous) =>
         previous.filter((id) => payload.some((account) => account.id === id)),
@@ -94,6 +122,15 @@ export function useAccounts() {
     } finally {
       setIsLoadingAccounts(false);
     }
+  }
+
+  async function applyFilters(): Promise<void> {
+    await loadAccounts(filters);
+  }
+
+  async function resetFilters(): Promise<void> {
+    setFilters(defaultAccountFilters);
+    await loadAccounts(defaultAccountFilters);
   }
 
   function toggleSelectAll(checked: boolean): void {
@@ -305,11 +342,15 @@ export function useAccounts() {
     setBulkForm,
     editForm,
     setEditForm,
+    filters,
+    setFilters,
     isSubmitting,
     totalReseller,
     selectedCount,
     allSelected,
     loadAccounts,
+    applyFilters,
+    resetFilters,
     toggleSelectAll,
     toggleSelectAccount,
     createSingleAccount,

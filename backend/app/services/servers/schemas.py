@@ -66,13 +66,6 @@ class ServerCreate(BaseModel):
         description="Additional notes or metadata",
         examples=["server pool A"],
     )
-    device_id: str | None = Field(
-        None,
-        max_length=100,
-        description="Optional device id for this server instance",
-        examples=["0ee0deeb75df0bca"],
-    )
-
     model_config = {"use_enum_values": True}
 
     @field_validator("base_url", mode="before")
@@ -127,13 +120,6 @@ class ServerCreateBulk(BaseModel):
         description="Additional notes for each server",
         examples=["pool A"],
     )
-    device_id: str | None = Field(
-        None,
-        max_length=100,
-        description="Optional shared device id",
-        examples=["0ee0deeb75df0bca"],
-    )
-
     model_config = {"use_enum_values": True}
 
     @field_validator("base_host", mode="before")
@@ -167,8 +153,6 @@ class ServerUpdate(BaseModel):
     max_requests_queued: int | None = Field(None, ge=1, le=20, examples=[8])
     is_active: bool | None = None
     notes: str | None = Field(None, max_length=255, examples=["maintenance"])
-    device_id: str | None = Field(None, max_length=100, examples=["0ee0deeb75df0bca"])
-
     model_config = {"use_enum_values": True}
 
 

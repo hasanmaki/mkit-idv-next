@@ -53,6 +53,13 @@ class BindingVerifyLogin(BaseModel):
     """Payload to verify login and reseller status."""
 
     otp: str = Field(..., description="OTP code for verification", examples=["123456"])
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingRequestLogin(BaseModel):
+    """Payload to request login OTP."""
+
     pin: str | None = Field(
         None, description="Optional PIN override", examples=["1234"]
     )
@@ -82,3 +89,35 @@ class BindingRead(BaseModel):
     updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 
     model_config = {"from_attributes": True, "use_enum_values": True}
+
+
+class BindingViewRead(BaseModel):
+    """Binding read schema with joined server/account display fields."""
+
+    id: int = Field(..., examples=[1])
+    server_id: int = Field(..., examples=[1])
+    account_id: int = Field(..., examples=[100])
+    batch_id: str = Field(..., examples=["batch-2026-02-10"])
+    step: BindingStep = Field(..., examples=[BindingStep.OTP_VERIFIED])
+    is_reseller: bool = Field(..., examples=[True])
+    balance_start: int | None = Field(None, examples=[7851])
+    balance_last: int | None = Field(None, examples=[7500])
+    last_error_code: str | None = Field(None, examples=["otp_failed"])
+    last_error_message: str | None = Field(None, examples=["Invalid OTP"])
+    token_login: str | None = Field(None, examples=["eyJhbGciOiJIUzUxMiJ9..."])
+    token_location: str | None = Field(None, examples=["eyJ0eXAiOiJKV1QiLCJhb..."])
+    device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
+    bound_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    unbound_at: datetime | None = Field(None, examples=["2026-02-10T20:00:00.000Z"])
+    created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
+    updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
+    server_base_url: str | None = Field(None, examples=["http://10.0.0.3:9900"])
+    server_port: int | None = Field(None, examples=[9900])
+    server_is_active: bool | None = Field(None, examples=[True])
+    server_device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
+    account_msisdn: str | None = Field(None, examples=["085773197010"])
+    account_email: str | None = Field(None, examples=["user@example.com"])
+    account_status: AccountStatus | None = Field(None, examples=[AccountStatus.ACTIVE])
+    account_batch_id: str | None = Field(None, examples=["batch-2026-02-10"])
+
+    model_config = {"use_enum_values": True}

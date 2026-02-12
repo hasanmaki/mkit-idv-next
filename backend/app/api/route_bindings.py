@@ -10,15 +10,23 @@ from app.services.bindings import (
     BindingCreate,
     BindingLogout,
     BindingRead,
+    BindingRequestLogin,
     BindingService,
     BindingUpdate,
+    BindingViewRead,
     BindingVerifyLogin,
 )
 
 router = APIRouter()
 
 
-@router.post("/", response_model=BindingRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BindingRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=BindingRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def create_binding(
     payload: BindingCreate,
     session: AsyncSession = Depends(get_db_session),
@@ -28,7 +36,8 @@ async def create_binding(
     return await service.create_binding(payload)
 
 
-@router.get("/", response_model=list[BindingRead])
+@router.get("", response_model=list[BindingRead])
+@router.get("/", response_model=list[BindingRead], include_in_schema=False)
 async def list_bindings(
     skip: int = 0,
     limit: int = 100,
@@ -42,6 +51,30 @@ async def list_bindings(
     """List bindings with optional filters and pagination."""
     service = BindingService(session)
     return await service.list_bindings(
+        skip=skip,
+        limit=limit,
+        server_id=server_id,
+        account_id=account_id,
+        batch_id=batch_id,
+        step=step,
+        active_only=active_only,
+    )
+
+
+@router.get("/view", response_model=list[BindingViewRead])
+async def list_bindings_view(
+    skip: int = 0,
+    limit: int = 100,
+    server_id: int | None = None,
+    account_id: int | None = None,
+    batch_id: str | None = None,
+    step: BindingStep | None = None,
+    active_only: bool | None = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> list[BindingViewRead]:
+    """List bindings with joined server/account display fields."""
+    service = BindingService(session)
+    return await service.list_bindings_view(
         skip=skip,
         limit=limit,
         server_id=server_id,
@@ -82,6 +115,17 @@ async def logout_binding(
     """Logout/unbind a binding and return the updated binding."""
     service = BindingService(session)
     return await service.logout_binding(binding_id, payload)
+
+
+@router.post("/{binding_id}/request-login")
+async def request_login(
+    binding_id: int,
+    payload: BindingRequestLogin,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Request OTP login for a binding."""
+    service = BindingService(session)
+    return await service.request_login(binding_id, payload)
 
 
 @router.post("/{binding_id}/verify-login")
