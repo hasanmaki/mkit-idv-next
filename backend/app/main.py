@@ -19,7 +19,6 @@ from app.core.log_config import configure_logging
 from app.core.middlewares import RequestLoggingMiddleware, TraceIDMiddleware
 from app.core.settings import get_app_settings
 from app.database.session import sessionmanager
-from app.database.tables import create_tables
 
 settings = get_app_settings()
 configure_logging()
@@ -28,8 +27,39 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     """Lifespan context manager for FastAPI app."""
-    # Startup: create tables
-    await create_tables()
+    # Startup: run database migrations
+    import subprocess
+    import sys
+
+    from app.core.log_config import get_logger
+
+    logger = get_logger("lifespan")
+
+    try:
+        # Run alembic upgrade using subprocess
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=".",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            logger.info("Database migrations completed successfully")
+        else:
+            logger.warning(
+                "Migration run completed with warnings",
+                extra={
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "returncode": result.returncode,
+                },
+            )
+    except Exception as e:
+        logger.error("Failed to run migrations: {}", e)
+        raise
+
     yield
     # Shutdown: close database connection
     await sessionmanager.close()
