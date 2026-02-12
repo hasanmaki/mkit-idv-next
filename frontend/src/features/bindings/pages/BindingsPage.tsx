@@ -1,5 +1,5 @@
 import { Plus, RefreshCw, Search, Upload } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +66,22 @@ const defaultLogoutForm: LogoutForm = {
 
 export function BindingsPage() {
   const vm = useBindings();
+  const totalBalanceLast = useMemo(
+    () =>
+      vm.bindings.reduce(
+        (acc, item) => acc + (typeof item.balance_last === "number" ? item.balance_last : 0),
+        0,
+      ),
+    [vm.bindings],
+  );
+  const totalBalanceStart = useMemo(
+    () =>
+      vm.bindings.reduce(
+        (acc, item) => acc + (typeof item.balance_start === "number" ? item.balance_start : 0),
+        0,
+      ),
+    [vm.bindings],
+  );
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(defaultCreateForm);
@@ -265,6 +281,19 @@ export function BindingsPage() {
         <Card>
           <CardHeader className="pb-2"><CardDescription>Active</CardDescription></CardHeader>
           <CardContent><p className="text-3xl font-semibold tracking-tight">{vm.activeCount}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Balance (Last)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold tracking-tight">
+              {totalBalanceLast.toLocaleString("id-ID")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Start: {totalBalanceStart.toLocaleString("id-ID")}
+            </p>
+          </CardContent>
         </Card>
       </section>
 
