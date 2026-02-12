@@ -29,6 +29,7 @@ from app.services.bindings.schemas import (
     BindingVerifyLogin,
 )
 from app.services.idv import IdvService
+from app.services.workflow import WorkflowGuardService
 
 logger = get_logger("service.bindings")
 
@@ -41,6 +42,7 @@ class BindingService:
         self.bindings = BindingRepository(Bindings)
         self.accounts = AccountRepository(Accounts)
         self.servers = ServerRepository(Servers)
+        self.guard = WorkflowGuardService()
 
     @staticmethod
     def _provider_ok(payload: dict, *, require_token: bool = False) -> bool:
@@ -153,12 +155,18 @@ class BindingService:
                 context={"binding_id": binding_id},
             )
 
-        if binding.unbound_at is not None:
-            raise AppValidationError(
-                message="Binding sudah logout sebelumnya.",
-                error_code="binding_already_logged_out",
-                context={"binding_id": binding_id},
-            )
+        self.guard.ensure_binding_step(
+            action="logout",
+            current=binding.step,
+            allowed={
+                BindingStep.BOUND,
+                BindingStep.OTP_REQUESTED,
+                BindingStep.OTP_VERIFICATION,
+                BindingStep.OTP_VERIFIED,
+                BindingStep.TOKEN_LOGIN_FETCHED,
+            },
+            context={"binding_id": binding_id},
+        )
 
         updated = await self.bindings.update(
             self.session,
@@ -213,6 +221,12 @@ class BindingService:
             )
 
         idv = IdvService.from_server(server)
+        self.guard.ensure_binding_step(
+            action="request_login",
+            current=binding.step,
+            allowed={BindingStep.BOUND, BindingStep.OTP_REQUESTED},
+            context={"binding_id": binding_id},
+        )
         otp_req = await idv.request_otp(account.msisdn, pin)
         if not self._provider_ok(otp_req):
             raise AppValidationError(
@@ -253,12 +267,12 @@ class BindingService:
                 context={"server_id": binding.server_id},
             )
 
-        if binding.step != BindingStep.OTP_REQUESTED:
-            raise AppValidationError(
-                message="Flow invalid. Jalankan request-login terlebih dahulu.",
-                error_code="binding_step_invalid",
-                context={"binding_id": binding_id, "step": binding.step},
-            )
+        self.guard.ensure_binding_step(
+            action="verify_login",
+            current=binding.step,
+            allowed={BindingStep.OTP_REQUESTED},
+            context={"binding_id": binding_id},
+        )
 
         idv = IdvService.from_server(server)
 
@@ -670,6 +684,19 @@ class BindingService:
                 context={"binding_id": binding_id},
             )
 
+        self.guard.ensure_binding_step(
+            action="check_balance",
+            current=binding.step,
+            allowed={
+                BindingStep.BOUND,
+                BindingStep.OTP_REQUESTED,
+                BindingStep.OTP_VERIFICATION,
+                BindingStep.OTP_VERIFIED,
+                BindingStep.TOKEN_LOGIN_FETCHED,
+            },
+            context={"binding_id": binding_id},
+        )
+
         account = await self.accounts.get(self.session, binding.account_id)
         if not account:
             raise AppNotFoundError(
@@ -714,6 +741,13 @@ class BindingService:
                 context={"binding_id": binding_id},
             )
 
+        self.guard.ensure_binding_step(
+            action="refresh_token_location",
+            current=binding.step,
+            allowed={BindingStep.OTP_VERIFIED, BindingStep.TOKEN_LOGIN_FETCHED},
+            context={"binding_id": binding_id},
+        )
+
         account = await self.accounts.get(self.session, binding.account_id)
         if not account:
             raise AppNotFoundError(
@@ -753,6 +787,13 @@ class BindingService:
                 error_code="binding_not_found",
                 context={"binding_id": binding_id},
             )
+
+        self.guard.ensure_binding_step(
+            action="verify_reseller",
+            current=binding.step,
+            allowed={BindingStep.OTP_VERIFIED, BindingStep.TOKEN_LOGIN_FETCHED},
+            context={"binding_id": binding_id},
+        )
 
         account = await self.accounts.get(self.session, binding.account_id)
         if not account:

@@ -9,6 +9,7 @@ from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.accounts import Accounts
 from app.models.bindings import Bindings
+from app.models.steps import BindingStep
 from app.models.servers import Servers
 from app.models.transaction_statuses import TransactionOtpStatus, TransactionStatus
 from app.models.transactions import Transactions, TransactionSnapshots
@@ -31,6 +32,7 @@ from app.services.transactions.schemas import (
     TransactionStatusUpdate,
     TransactionStopRequest,
 )
+from app.services.workflow import WorkflowGuardService
 
 logger = get_logger("service.transactions")
 
@@ -45,6 +47,7 @@ class TransactionService:
         self.bindings = BindingRepository(Bindings)
         self.accounts = AccountRepository(Accounts)
         self.servers = ServerRepository(Servers)
+        self.guard = WorkflowGuardService()
 
     async def create_transaction(
         self,
@@ -200,6 +203,12 @@ class TransactionService:
     async def start_transaction(self, payload: TransactionStartRequest) -> Transactions:
         """Start transaction flow: balance_start -> trx_idv -> status_idv -> balance_end."""
         binding, account, server = await self._load_binding_context(payload.binding_id)
+        self.guard.ensure_binding_step(
+            action="start_transaction",
+            current=binding.step,
+            allowed={BindingStep.TOKEN_LOGIN_FETCHED},
+            context={"binding_id": binding.id},
+        )
         idv = IdvService.from_server(server)
 
         balance_start_int = await self._fetch_balance_int(idv, account.msisdn)
@@ -369,6 +378,12 @@ class TransactionService:
     ) -> Transactions:
         """Submit OTP and re-check status."""
         trx = await self.get_transaction(transaction_id)
+        self.guard.ensure_transaction_status(
+            action="submit_otp",
+            current=trx.status,
+            allowed={TransactionStatus.PROCESSING, TransactionStatus.RESUMED},
+            context={"transaction_id": trx.id},
+        )
         binding, account, server = await self._load_binding_context(trx.binding_id)
         idv = IdvService.from_server(server)
 
@@ -413,6 +428,17 @@ class TransactionService:
     ) -> Transactions:
         """Stop transaction manually."""
         trx = await self.get_transaction(transaction_id)
+        self.guard.ensure_transaction_status(
+            action="stop_transaction",
+            current=trx.status,
+            allowed={
+                TransactionStatus.PROCESSING,
+                TransactionStatus.RESUMED,
+                TransactionStatus.PAUSED,
+                TransactionStatus.SUSPECT,
+            },
+            context={"transaction_id": trx.id},
+        )
         return await self.update_status(
             trx.id,
             TransactionStatusUpdate(
@@ -441,17 +467,12 @@ class TransactionService:
             AppValidationError: If transaction cannot be paused from current status
         """
         trx = await self.get_transaction(transaction_id)
-
-        # Validate: can only pause PROCESSING or RESUMED transactions
-        if trx.status not in [TransactionStatus.PROCESSING, TransactionStatus.RESUMED]:
-            raise AppValidationError(
-                message=f"Cannot pause transaction with status {trx.status}",
-                error_code="transaction_invalid_state_for_pause",
-                context={
-                    "transaction_id": transaction_id,
-                    "current_status": trx.status,
-                },
-            )
+        self.guard.ensure_transaction_status(
+            action="pause_transaction",
+            current=trx.status,
+            allowed={TransactionStatus.PROCESSING, TransactionStatus.RESUMED},
+            context={"transaction_id": transaction_id},
+        )
 
         # Update to PAUSED status
         updated = await self.transactions.update(
@@ -485,17 +506,12 @@ class TransactionService:
             AppValidationError: If transaction is not paused or balance insufficient
         """
         trx = await self.get_transaction(transaction_id)
-
-        # Validate: can only resume PAUSED transactions
-        if trx.status != TransactionStatus.PAUSED:
-            raise AppValidationError(
-                message=f"Cannot resume transaction with status {trx.status}. Only PAUSED transactions can be resumed.",
-                error_code="transaction_not_paused",
-                context={
-                    "transaction_id": transaction_id,
-                    "current_status": trx.status,
-                },
-            )
+        self.guard.ensure_transaction_status(
+            action="resume_transaction",
+            current=trx.status,
+            allowed={TransactionStatus.PAUSED},
+            context={"transaction_id": transaction_id},
+        )
 
         # Check balance before resuming
         binding, account, server = await self._load_binding_context(trx.binding_id)
@@ -541,6 +557,12 @@ class TransactionService:
     async def continue_transaction(self, transaction_id: int) -> Transactions:
         """Continue transaction: re-check status_idv and balance_end."""
         trx = await self.get_transaction(transaction_id)
+        self.guard.ensure_transaction_status(
+            action="continue_transaction",
+            current=trx.status,
+            allowed={TransactionStatus.PROCESSING, TransactionStatus.RESUMED},
+            context={"transaction_id": trx.id},
+        )
         binding, account, server = await self._load_binding_context(trx.binding_id)
         idv = IdvService.from_server(server)
         status_resp = await idv.status_trx(account.msisdn, trx.trx_id)
@@ -593,6 +615,16 @@ class TransactionService:
             AppValidationError: If balance check fails
         """
         trx = await self.get_transaction(transaction_id)
+        self.guard.ensure_transaction_status(
+            action="check_balance_and_continue_or_stop",
+            current=trx.status,
+            allowed={
+                TransactionStatus.PROCESSING,
+                TransactionStatus.RESUMED,
+                TransactionStatus.PAUSED,
+            },
+            context={"transaction_id": trx.id},
+        )
 
         # Load context
         binding, account, server = await self._load_binding_context(trx.binding_id)

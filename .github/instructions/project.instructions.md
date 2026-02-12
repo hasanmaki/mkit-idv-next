@@ -1,140 +1,130 @@
 ---
-description: Describe when these instructions should be loaded
-# applyTo: 'Describe when these instructions should be loaded' # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
+description: Project rules and current architecture for mkit-idv-next
 ---
 
-**Betul sekali, Maki!** 😅
-Saya yang kurang tepat dalam framing-nya. Mari kita **perbaiki POV-nya** agar **100% sesuai realitasmu**:
+# Project Context
 
----
+Sistem ini mengelola resource server (umumnya `http://10.0.0.3:port`) untuk proses:
 
-# 📋 **Project Summary: MSISDN Binding & Voucher Exchange System**
+1. bind account (MSISDN) ke server
+2. login + verify + reseller check
+3. transaksi voucher
 
-## 🎯 **Apa Ini?**
+Model utama:
 
-Sistem internal untuk **mengelola 20 resource server** (bukan 20 MSISDN!).
-Setiap server berjalan di port berbeda (`localhost:9900`–`localhost:9919`) dan **dapat dipasangkan dengan MSISDN apa pun**.
+- `servers`: resource endpoint
+- `accounts`: daftar MSISDN per `batch_id`
+- `bindings`: sesi kerja account+server
+- `transactions`: lifecycle transaksi
 
-> 🔹 **Ada 20 resource tetap** (server/port)
-> 🔹 **MSISDN bersifat sementara & habis pakai** → diganti setelah pulsanya habis
-> 🔹 **Hanya 1 operator** (kamu) yang mengelola semua resource ini
+# Binding Lifecycle
 
----
+State `bindings.step`:
 
-## 🔄 **Alur Kerja Utama**
+`bound -> otp_requested -> otp_verification -> otp_verified -> token_login_fetched -> logged_out`
 
-### **Siklus Hidup MSISDN di Satu Server**
+## Guard Matrix (Binding)
 
-1. **Pasang MSISDN baru** (account) ke server kosong/tersedia
-2. **Jalankan proses login**:
-   - Request OTP → Verifikasi OTP → Ambil token login → Cek saldo → Ambil token lokasi
-3. **Verifikasi reseller**:
-   - Cek daftar produk → jika tidak ada, MSISDN ini non-reseller
-4. **Eksekusi transaksi**:
-   - Transaksi pertama: butuh OTP khusus (tergantung device_id)
-   - Transaksi berikutnya: otomatis sampai pulsa habis
-5. **Logout & ganti MSISDN**:
-   - Setelah pulsa habis, **logout** binding lama
-   - **Pasang MSISDN baru** di server yang sama
-   - Ulangi proses dari langkah 1
+- `request_login`: allowed `bound`, `otp_requested`
+- `verify_login`: allowed `otp_requested`
+- `refresh_token_location`: allowed `otp_verified`, `token_login_fetched`
+- `verify_reseller`: allowed `otp_verified`, `token_login_fetched`
+- `check_balance`: allowed semua step aktif (kecuali `logged_out`)
+- `logout`: allowed semua step aktif (kecuali `logged_out`)
 
-> 💡 **Server = aset tetap**
-> 💡 **MSISDN = konsumsi habis pakai**
+Guard diimplementasikan di `WorkflowGuardService`.
 
----
+# Transaction Lifecycle
 
-## 🏗️ **Arsitektur Sistem**
+Status `transactions.status`:
 
-### **Resource Management**
+- `PROCESSING`
+- `PAUSED`
+- `RESUMED`
+- `SUKSES`
+- `SUSPECT`
+- `GAGAL`
 
-- **20 server** → resource pool tetap yang kamu kelola
-- **MSISDN tak terbatas** → kamu bisa ganti-ganti sesuai kebutuhan
-- **Binding** = pemasangan sementara MSISDN ke salah satu server
+## Guard Matrix (Transaction)
 
-### **Database Schema**
+- `start_transaction`: binding step harus `token_login_fetched`
+- `submit_otp`: allowed `PROCESSING`, `RESUMED`
+- `pause`: allowed `PROCESSING`, `RESUMED`
+- `resume`: allowed `PAUSED`
+- `continue`: allowed `PROCESSING`, `RESUMED`
+- `check_balance_and_continue_or_stop`: allowed `PROCESSING`, `RESUMED`, `PAUSED`
+- `stop`: allowed `PROCESSING`, `RESUMED`, `PAUSED`, `SUSPECT`
 
-- **`servers`**: Daftar 20 resource server (port, konfigurasi, status)
-- **`accounts`**: Daftar MSISDN + email, dikelompokkan per `batch_id` + status + reseller flag
-- **`bindings`**: Sesi pemakaian account pada server (riwayat per sesi) + token login/location
-- **`transactions`**: Riwayat transaksi per binding (audit lengkap)
+# Device ID Rule (Updated)
 
-### **State Management**
+`device_id` **bukan input manual server**.
 
-Setiap **binding** memiliki lifecycle:
+Source of truth:
 
-```
-BOUND
-→ OTP_REQUESTED
-→ OTP_VERIFICATION
-→ OTP_VERIFIED
-→ TOKEN_LOGIN_FETCHED
-→ LOGGED_OUT
-```
+- diambil dari response provider (`list_idv -> data.identifier.device_id`)
+- disimpan ke `bindings.device_id` (saat verify flow)
+- sinkron ke `accounts.last_device_id`
 
-Ketika MSISDN diganti, binding lama di-`LOGGED_OUT`, binding baru dibuat di `BOUND`.
+# Token Location Rule
 
-Token flow saat login:
+Binding menyimpan:
 
-```
-OTP → token_login (verifyOtp) → balance_start → token_location
-```
+- `token_location`
+- `token_location_refreshed_at`
 
-## ✅ **Flow Transaksi (final)**
+UI menampilkan badge `token_loc`:
 
-Urutan selalu sama:
+- `Fresh` / `Stale` / `Empty`
 
-```
-balance_start → trx_idv → status_idv → balance_end
-```
+# Implemented Binding Actions
 
-Aturan status:
-- `is_success == 2` + `voucher != null` → **SUKSES**
-- `is_success == 2` + `voucher == null` → **SUSPECT**
-- selain itu → **PROCESSING** (tunggu OTP), lalu:
-  - OTP masuk → hit `status_idv` lagi
-  - OTP tidak masuk → **GAGAL**
+Inline actions:
 
-OTP requirement ditentukan oleh:
-- `account.last_device_id` vs `binding.device_id`
+- request login (PIN optional, fallback ke `account.pin`)
+- verify login (OTP)
+- check balance
+- refresh token location
+- verify reseller
+- logout
+- delete
 
-## ✅ **Endpoint Orkestrasi Transaksi**
+Bulk actions:
 
-- `POST /v1/transactions/start`
-- `POST /v1/transactions/{id}/otp`
-- `POST /v1/transactions/{id}/continue`
-- `POST /v1/transactions/{id}/stop`
+- bulk check balance
+- bulk refresh token_loc
+- bulk request login
+- bulk verify reseller
+- bulk logout
+- bulk delete
 
----
+OTP handling:
 
-## ⚙️ **Proses Eksekusi**
+- gunakan `OTP Queue` (isi OTP per row untuk selected bindings dengan step `otp_requested`)
 
-### **Operasional Harian**
+# Bulk Binding Input Modes
 
-1. Pilih **server yang tersedia** (dari 20 resource)
-2. **Pasang MSISDN baru** ke server tersebut
-3. Jalankan **siklus lengkap**: login → verifikasi → transaksi massal
-4. Saat pulsa habis, **logout** lalu **ganti MSISDN** di server yang sama
-5. Ulangi proses untuk **semua 20 server secara paralel**
+Supported:
 
-> ✅ **20 server bisa jalan bersamaan**
-> ✅ **Setiap server mengelola MSISDN-nya sendiri**
-> ✅ **Tidak ada batasan jumlah MSISDN** — hanya dibatasi oleh pulsa yang tersedia
+1. `server_id,account_id`
+2. `port,msisdn[,batch_id]`
 
----
+API:
 
-## 🎯 **POV yang Benar**
+- `POST /v1/bindings/bulk/dry-run`
+- `POST /v1/bindings/bulk`
 
-- **Kamu memiliki 20 "mesin"** (server/port)
-- **Setiap mesin bisa dipasang "kartu SIM"** (MSISDN)
-- **Kartu SIM dipakai sampai habis, lalu diganti dengan yang baru**
-- **Mesin tetap ada, kartu SIM yang berganti**
+Result per item: `would_create|created|failed` + reason.
 
----
+# Endpoint Summary (Bindings)
 
-## ✅ **Catatan Model**
+- `POST /v1/bindings`
+- `GET /v1/bindings`
+- `GET /v1/bindings/view`
+- `POST /v1/bindings/{id}/request-login`
+- `POST /v1/bindings/{id}/verify-login`
+- `POST /v1/bindings/{id}/check-balance`
+- `POST /v1/bindings/{id}/refresh-token-location`
+- `POST /v1/bindings/{id}/verify-reseller`
+- `POST /v1/bindings/{id}/logout`
+- `DELETE /v1/bindings/{id}`
 
-- `accounts` memakai **`batch_id`** untuk grouping input (misal 1000 nomor per batch).
-- Rekap saldo per batch dihitung **on-demand** dari `bindings` dan `transactions`.
-- `transactions` wajib menyimpan `msisdn/account`, `trx_id`, `pulsa_awal`, `pulsa_akhir`, dan detail transaksi lain.
-- `servers.device_id` disimpan untuk kebutuhan OTP transaksi (belum diaktifkan logikanya).
-- `bindings` menyimpan `token_login` dan `token_location` untuk debug.
