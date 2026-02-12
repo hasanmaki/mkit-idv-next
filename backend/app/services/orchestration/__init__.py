@@ -8,13 +8,30 @@ from app.services.orchestration.registry import (
     WorkerState,
     WorkerStateRecord,
 )
+from app.services.orchestration.runtime import runtime
+from app.services.orchestration.schemas import (
+    OrchestrationControlRequest,
+    OrchestrationControlResult,
+    OrchestrationItemResult,
+    OrchestrationStartRequest,
+    OrchestrationStatusItem,
+    OrchestrationStatusResult,
+)
+from app.services.orchestration.service import OrchestrationControlService
 
 __all__ = [
+    "OrchestrationControlRequest",
+    "OrchestrationControlResult",
+    "OrchestrationControlService",
+    "OrchestrationItemResult",
+    "OrchestrationStartRequest",
+    "OrchestrationStatusItem",
+    "OrchestrationStatusResult",
     "RedisWorkerRegistry",
     "WorkerConfig",
     "WorkerHeartbeat",
     "WorkerRegistry",
     "WorkerState",
     "WorkerStateRecord",
+    "runtime",
 ]
-

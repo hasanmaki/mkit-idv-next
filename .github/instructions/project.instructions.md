@@ -194,6 +194,14 @@ Result per item: `would_create|created|failed` + reason.
 - `POST /v1/bindings/{id}/logout`
 - `DELETE /v1/bindings/{id}`
 
+# Endpoint Summary (Orchestration)
+
+- `POST /v1/orchestration/start`
+- `POST /v1/orchestration/pause`
+- `POST /v1/orchestration/resume`
+- `POST /v1/orchestration/stop`
+- `POST /v1/orchestration/status`
+
 # Tools Endpoint Note
 
 `/v1/tools/*` adalah endpoint ad-hoc/debug.

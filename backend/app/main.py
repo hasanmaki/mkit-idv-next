@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import (
     route_accounts,
     route_bindings,
+    route_orchestration,
     route_servers,
     route_tools,
     route_transactions,
@@ -106,6 +107,9 @@ app.include_router(route_accounts.router, tags=["accounts"], prefix="/v1/account
 app.include_router(route_bindings.router, tags=["bindings"], prefix="/v1/bindings")
 app.include_router(
     route_transactions.router, tags=["transactions"], prefix="/v1/transactions"
+)
+app.include_router(
+    route_orchestration.router, tags=["orchestration"], prefix="/v1/orchestration"
 )
 
 # New Tools Router
