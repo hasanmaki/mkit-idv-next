@@ -1,6 +1,7 @@
 """API routes for transaction management."""
 
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
@@ -161,15 +162,16 @@ async def check_balance_and_continue(
     }
 
 
-@router.get("/", response_model=list[TransactionRead])
+@router.get("", response_model=list[TransactionRead])
+@router.get("/", response_model=list[TransactionRead], include_in_schema=False)
 async def list_transactions(
     skip: int = 0,
     limit: int = 100,
-    status_filter: TransactionStatus | None = None,
-    binding_id: int | None = None,
-    account_id: int | None = None,
-    server_id: int | None = None,
-    batch_id: str | None = None,
+    status_filter: Optional[TransactionStatus] = None,
+    binding_id: Optional[int] = None,
+    account_id: Optional[int] = None,
+    server_id: Optional[int] = None,
+    batch_id: Optional[str] = None,
     session: AsyncSession = Depends(get_db_session),
 ) -> list[Transactions]:
     """List transactions with optional filters and pagination."""

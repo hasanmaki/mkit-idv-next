@@ -44,8 +44,8 @@ RUN uv sync
 COPY --from=frontend-builder /build/frontend/dist /app/frontend
 
 # Copy alembic migrations and config
-COPY alembic ./alembic
-COPY alembic.ini ./
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./
 
 # Expose port
 EXPOSE ${PORT}
