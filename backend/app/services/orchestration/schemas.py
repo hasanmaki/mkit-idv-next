@@ -56,3 +56,24 @@ class OrchestrationStatusResult(BaseModel):
 
     items: list[OrchestrationStatusItem]
 
+
+class OrchestrationMonitorItem(BaseModel):
+    """Compact monitor item with lock and heartbeat details."""
+
+    binding_id: int
+    state: WorkerState
+    reason: str | None = None
+    state_updated_at: str | None = None
+    lock_owner: str | None = None
+    heartbeat_owner: str | None = None
+    heartbeat_cycle: int | None = None
+    heartbeat_last_action: str | None = None
+    heartbeat_updated_at: str | None = None
+
+
+class OrchestrationMonitorResult(BaseModel):
+    """Monitor summary payload."""
+
+    total_workers: int
+    active_workers: int
+    items: list[OrchestrationMonitorItem]

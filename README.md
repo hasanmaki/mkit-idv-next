@@ -16,6 +16,10 @@ Requires Docker and Docker Compose.
 
 2. Open [http://localhost:9914](http://localhost:9914)
 
+Notes:
+
+- Includes `redis` and `orchestrator` services for transaction orchestration runtime.
+
 ### Option 2: Docker Development (Backend + Vite)
 
 1. Build and run:
@@ -26,6 +30,7 @@ Requires Docker and Docker Compose.
 
 2. Open frontend dev server at [http://localhost:5173](http://localhost:5173)
 3. API remains available at [http://localhost:9914](http://localhost:9914)
+4. `redis` and `orchestrator` are started automatically in compose.
 
 ### Option 3: Manual Setup
 

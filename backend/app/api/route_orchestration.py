@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.services.orchestration.schemas import (
     OrchestrationControlRequest,
     OrchestrationControlResult,
+    OrchestrationMonitorResult,
     OrchestrationStartRequest,
     OrchestrationStatusResult,
 )
@@ -47,3 +48,9 @@ async def get_status(payload: OrchestrationControlRequest) -> OrchestrationStatu
     service = OrchestrationControlService()
     return await service.status(payload.binding_ids)
 
+
+@router.get("/monitor", response_model=OrchestrationMonitorResult)
+async def get_monitor() -> OrchestrationMonitorResult:
+    """Fetch compact monitor payload for active workers and heartbeat."""
+    service = OrchestrationControlService()
+    return await service.monitor()

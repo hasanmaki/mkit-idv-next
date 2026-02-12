@@ -120,6 +120,7 @@ Untuk skala `10-30` server dan deployment multi-worker:
 
 - gunakan Redis sebagai shared worker registry sejak awal
 - in-memory registry tidak dipakai untuk runtime production
+- jalankan orchestrator sebagai process dedicated terpisah dari API
 
 # Device ID Rule (Updated)
 
@@ -201,6 +202,7 @@ Result per item: `would_create|created|failed` + reason.
 - `POST /v1/orchestration/resume`
 - `POST /v1/orchestration/stop`
 - `POST /v1/orchestration/status`
+- `GET /v1/orchestration/monitor`
 
 # Tools Endpoint Note
 

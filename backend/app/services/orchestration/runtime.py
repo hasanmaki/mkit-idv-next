@@ -15,7 +15,6 @@ from app.models.transaction_statuses import TransactionStatus
 from app.repos.binding_repo import BindingRepository
 from app.services.orchestration.redis_registry import RedisWorkerRegistry
 from app.services.orchestration.registry import (
-    WorkerConfig,
     WorkerHeartbeat,
     WorkerState,
 )
@@ -38,74 +37,50 @@ class OrchestrationRuntime:
         """Return a new registry instance from configured factory."""
         return self._registry_factory()
 
-    async def start_worker(
-        self,
-        binding_id: int,
-        *,
-        product_id: str,
-        email: str,
-        limit_harga: int,
-        interval_ms: int,
-        max_retry_status: int,
-        cooldown_on_error_ms: int,
-    ) -> tuple[bool, str]:
-        """Start local worker task for a binding if not already started."""
-        owner = self._owner(binding_id)
-        registry = self._registry_factory()
-
+    async def ensure_local_worker(self, binding_id: int) -> bool:
+        """Ensure a local task exists for a running/paused binding."""
         async with self._task_lock:
             existing = self._tasks.get(binding_id)
             if existing and not existing.done():
-                return False, "worker_already_running_locally"
+                return False
 
-            started = await registry.start(
-                binding_id,
-                owner=owner,
-                config=WorkerConfig(
-                    interval_ms=interval_ms,
-                    max_retry_status=max_retry_status,
-                    cooldown_on_error_ms=cooldown_on_error_ms,
-                    extra={
-                        "product_id": product_id,
-                        "email": email,
-                        "limit_harga": str(limit_harga),
-                    },
-                ),
-            )
-            if not started:
-                return False, "worker_already_running"
-
+            owner = self._owner(binding_id)
             task = asyncio.create_task(self._worker_loop(binding_id=binding_id, owner=owner))
             self._tasks[binding_id] = task
-            return True, "started"
+            return True
 
-    async def pause_worker(self, binding_id: int, reason: str | None) -> tuple[bool, str]:
-        """Pause worker by setting shared state."""
-        ok = await self._registry_factory().pause(binding_id, reason=reason)
-        return (ok, "paused" if ok else "pause_failed")
+    async def tick(self) -> None:
+        """One reconcile cycle: spawn local workers for RUNNING/PAUSED states."""
+        registry = self._registry_factory()
+        states = await registry.list_states()
+        for state in states:
+            if state.state in {WorkerState.RUNNING, WorkerState.PAUSED}:
+                await self.ensure_local_worker(state.binding_id)
 
-    async def resume_worker(self, binding_id: int) -> tuple[bool, str]:
-        """Resume worker by setting shared state."""
-        ok = await self._registry_factory().resume(binding_id)
-        return (ok, "resumed" if ok else "resume_failed")
-
-    async def stop_worker(self, binding_id: int, reason: str | None) -> tuple[bool, str]:
-        """Stop worker cooperatively (boundary stop, no forced cancel)."""
-        ok = await self._registry_factory().stop(binding_id, reason=reason)
-        return (ok, "stop_requested" if ok else "stop_failed")
+    async def run_forever(self, interval_seconds: float = 1.0) -> None:
+        """Run reconcile loop forever."""
+        while True:
+            try:
+                await self.tick()
+            except Exception:
+                logger.exception("Orchestrator tick failed")
+            await asyncio.sleep(interval_seconds)
 
     async def _worker_loop(self, *, binding_id: int, owner: str) -> None:
         """Run transaction cycles for one binding until stopped."""
         registry = self._registry_factory()
         lock_ok = await registry.acquire_lock(binding_id, owner=owner)
         if not lock_ok:
-            await registry.stop(binding_id, reason="lock_not_acquired")
             async with self._task_lock:
                 self._tasks.pop(binding_id, None)
             return
 
         cycle = 0
         try:
+            cfg = await registry.get_config(binding_id)
+            if cfg is None:
+                await registry.stop(binding_id, reason="missing_worker_config")
+                return
             while True:
                 state_record = await registry.get_state(binding_id)
                 if state_record is None:
@@ -123,11 +98,6 @@ class OrchestrationRuntime:
                         updated_at=state_record.updated_at,
                     )
                 )
-
-                cfg = await registry.get_config(binding_id)
-                if cfg is None:
-                    await registry.stop(binding_id, reason="missing_worker_config")
-                    break
 
                 if state_record.state == WorkerState.PAUSED:
                     await asyncio.sleep(0.5)

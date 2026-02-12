@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: mkit-idv-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - mkit-network
+
   app:
     build:
       context: .
@@ -12,6 +22,7 @@ services:
       # DATABASE_URL: sqlite:///./application.db
       # SECRET_KEY: your-secret-key-here
       PYTHONUNBUFFERED: "1"
+      REDIS__URL: "redis://redis:6379/0"
     volumes:
       # Bind mount logs directory
       - ./backend/logs:/app/logs
@@ -24,6 +35,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - mkit-network
+    depends_on:
+      - redis
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mkit-idv-orchestrator
+    command: ["uv", "run", "python", "-m", "app.orchestrator_main"]
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      REDIS__URL: "redis://redis:6379/0"
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./application.db:/app/application.db
+    depends_on:
+      - redis
     networks:
       - mkit-network
 networks:

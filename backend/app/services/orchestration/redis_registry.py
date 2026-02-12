@@ -175,6 +175,47 @@ class RedisWorkerRegistry:
         )
         await self.redis.expire(key, self.config.heartbeat_ttl_seconds)
 
+    async def get_lock_owner(self, binding_id: int) -> str | None:
+        """Return lock owner string for binding."""
+        owner = await self.redis.get(self._lock_key(binding_id))
+        return owner if owner else None
+
+    async def get_heartbeat(self, binding_id: int) -> WorkerHeartbeat | None:
+        """Return last heartbeat payload for binding."""
+        raw = await self.redis.hgetall(self._heartbeat_key(binding_id))
+        if not raw:
+            return None
+        return WorkerHeartbeat(
+            binding_id=binding_id,
+            owner=raw.get("owner", ""),
+            cycle=int(raw.get("cycle", "0")),
+            last_action=raw.get("last_action", ""),
+            updated_at=self._parse_datetime(raw.get("updated_at")),
+        )
+
+    async def list_states(self) -> list[WorkerStateRecord]:
+        """List all worker state records stored in Redis."""
+        items: list[WorkerStateRecord] = []
+        async for key in self.redis.scan_iter(match="wrk:state:*", count=200):
+            raw = await self.redis.hgetall(key)
+            if not raw:
+                continue
+            binding_raw = raw.get("binding_id")
+            if not binding_raw:
+                continue
+            binding_id = int(binding_raw)
+            items.append(
+                WorkerStateRecord(
+                    binding_id=binding_id,
+                    state=WorkerState(raw.get("state", WorkerState.IDLE.value)),
+                    reason=raw.get("reason") or None,
+                    updated_at=self._parse_datetime(raw.get("updated_at")),
+                    owner=raw.get("owner") or None,
+                )
+            )
+        items.sort(key=lambda item: item.binding_id)
+        return items
+
     async def _set_state(
         self, binding_id: int, state: WorkerState, *, reason: str | None
     ) -> bool:
@@ -221,4 +262,3 @@ class RedisWorkerRegistry:
     @staticmethod
     def _heartbeat_key(binding_id: int) -> str:
         return f"wrk:hb:{binding_id}"
-

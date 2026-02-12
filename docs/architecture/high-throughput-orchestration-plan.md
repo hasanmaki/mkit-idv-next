@@ -17,6 +17,7 @@ Komponen runtime:
 
 2. `Orchestrator Service` (dedicated process, 1 replica awal)
 - fokus: worker loop transaksi per binding
+- entrypoint: `python -m app.orchestrator_main`
 
 3. `Redis`
 - shared runtime state + distributed lock + command channel

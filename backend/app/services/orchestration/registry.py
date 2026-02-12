@@ -84,3 +84,11 @@ class WorkerRegistry(Protocol):
     async def heartbeat(self, payload: WorkerHeartbeat) -> None:
         """Persist heartbeat for runtime liveness tracking."""
 
+    async def get_lock_owner(self, binding_id: int) -> str | None:
+        """Return current lock owner for a binding."""
+
+    async def get_heartbeat(self, binding_id: int) -> WorkerHeartbeat | None:
+        """Return last heartbeat for binding worker."""
+
+    async def list_states(self) -> list[WorkerStateRecord]:
+        """Return all worker state records."""

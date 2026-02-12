@@ -3,13 +3,24 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AccountsPage } from "@/features/accounts/pages/AccountsPage";
 import { BindingsPage } from "@/features/bindings/pages/BindingsPage";
+import { OrchestrationPage } from "@/features/orchestration/pages/OrchestrationPage";
 import { ServersPage } from "@/features/servers/pages/ServersPage";
 import { TransactionsPage } from "@/features/transactions/pages/TransactionsPage";
 
-type TabKey = "servers" | "accounts" | "bindings" | "transactions";
+type TabKey =
+  | "servers"
+  | "accounts"
+  | "bindings"
+  | "orchestration"
+  | "transactions";
 
 function resolveTab(raw: string | null): TabKey {
-  if (raw === "accounts" || raw === "bindings" || raw === "transactions") {
+  if (
+    raw === "accounts" ||
+    raw === "bindings" ||
+    raw === "orchestration" ||
+    raw === "transactions"
+  ) {
     return raw;
   }
   return "servers";
@@ -42,6 +53,12 @@ function App() {
             Bindings
           </Button>
           <Button
+            variant={tab === "orchestration" ? "default" : "secondary"}
+            onClick={() => setTab("orchestration")}
+          >
+            Orchestration
+          </Button>
+          <Button
             variant={tab === "transactions" ? "default" : "secondary"}
             onClick={() => setTab("transactions")}
           >
@@ -53,6 +70,7 @@ function App() {
       {tab === "servers" ? <ServersPage /> : null}
       {tab === "accounts" ? <AccountsPage /> : null}
       {tab === "bindings" ? <BindingsPage /> : null}
+      {tab === "orchestration" ? <OrchestrationPage /> : null}
       {tab === "transactions" ? <TransactionsPage /> : null}
     </main>
   );
