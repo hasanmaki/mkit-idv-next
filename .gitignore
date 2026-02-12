@@ -367,3 +367,11 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Application database files
+application.db
+application.db-*
+application.db-journal
+backend/application.db
+backend/application.db-*
+backend/application.db-journal

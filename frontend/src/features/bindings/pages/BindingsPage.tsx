@@ -239,6 +239,10 @@ export function BindingsPage() {
     await vm.bulkDelete();
   }
 
+  async function onBulkVerifyReseller(): Promise<void> {
+    await vm.bulkVerifyReseller();
+  }
+
   function buildOtpQueueBindings(): Binding[] {
     return vm.bindings.filter(
       (binding) =>
@@ -354,7 +358,15 @@ export function BindingsPage() {
               disabled={vm.selectedCount === 0 || vm.isSubmitting}
               onClick={() => void onBulkRefreshToken()}
             >
-              Bulk Refresh Token
+              Bulk Refresh token_loc
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={vm.selectedCount === 0 || vm.isSubmitting}
+              onClick={() => void onBulkVerifyReseller()}
+            >
+              Bulk Verify Reseller
             </Button>
             <div className="flex items-center gap-2">
               <Label htmlFor="bulk-pin">PIN (opsional)</Label>
@@ -402,6 +414,7 @@ export function BindingsPage() {
             onRefreshTokenLocation={(bindingId) =>
               void vm.refreshTokenLocationBinding(bindingId)
             }
+            onVerifyReseller={(bindingId) => void vm.verifyResellerBinding(bindingId)}
             onOpenRequestLogin={openRequestLogin}
             onOpenVerify={openVerify}
             onOpenLogout={openLogout}

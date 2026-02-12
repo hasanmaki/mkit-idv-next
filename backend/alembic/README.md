@@ -68,6 +68,28 @@ Both use SQLite with the same schema, so migrations are portable across environm
 
 ## Troubleshooting
 
+### Wrong Database Schema (OperationalError: no such column)
+
+**Symptom**: Error like `no such column: bindings.token_location_refreshed_at`
+
+**Cause**: Migrations were applied to `backend/application.db` but app uses `./application.db` (project root)
+
+**Solution**:
+```bash
+# Option 1: Copy migrated database (quick fix)
+cp backend/application.db application.db
+
+# Option 2: Rebuild from scratch (clean slate)
+rm application.db
+# Restart app (migrations will recreate)
+```
+
+**Prevention**: Always run migrations from project root:
+```bash
+cd ..  # Go to project root
+python -m alembic -c backend/alembic.ini upgrade head
+```
+
 ### Migration Conflicts
 
 If autogenerate detects conflicts:

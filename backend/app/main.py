@@ -30,32 +30,53 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     # Startup: run database migrations
     import subprocess
     import sys
+    from pathlib import Path
 
     from app.core.log_config import get_logger
 
     logger = get_logger("lifespan")
 
     try:
-        # Run alembic upgrade using subprocess
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=".",
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        # Get the project root directory (parent of backend)
+        project_root = Path(__file__).parent.parent
 
-        if result.returncode == 0:
-            logger.info("Database migrations completed successfully")
-        else:
+        # Find alembic.ini in backend directory
+        alembic_ini = project_root / "backend" / "alembic.ini"
+
+        if not alembic_ini.exists():
             logger.warning(
-                "Migration run completed with warnings",
-                extra={
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "returncode": result.returncode,
-                },
+                "Alembic configuration not found, skipping migrations",
+                extra={"alembic_ini": str(alembic_ini)},
             )
+        else:
+            # Run alembic upgrade using subprocess with explicit config
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "alembic",
+                    "-c",
+                    str(alembic_ini),
+                    "upgrade",
+                    "head",
+                ],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            if result.returncode == 0:
+                logger.info("Database migrations completed successfully")
+            else:
+                logger.warning(
+                    "Migration run completed with warnings",
+                    extra={
+                        "stdout": result.stdout,
+                        "stderr": result.stderr,
+                        "returncode": result.returncode,
+                    },
+                )
     except Exception as e:
         logger.error("Failed to run migrations: {}", e)
         raise

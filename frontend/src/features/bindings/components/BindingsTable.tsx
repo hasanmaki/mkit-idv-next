@@ -5,6 +5,7 @@ import {
   LogOut,
   MoreHorizontal,
   RefreshCw,
+  ScanSearch,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -43,7 +44,10 @@ function tokenBadge(binding: Binding): { label: string; variant: "default" | "se
   if (!binding.token_location || !binding.token_location_refreshed_at) {
     return { label: "Empty", variant: "secondary" };
   }
-  const refreshedAtMs = new Date(binding.token_location_refreshed_at).getTime();
+  const rawTs = binding.token_location_refreshed_at;
+  const hasTz = /(?:Z|[+\-]\d{2}:\d{2})$/.test(rawTs);
+  const normalizedTs = hasTz ? rawTs : `${rawTs}Z`;
+  const refreshedAtMs = new Date(normalizedTs).getTime();
   const ageMinutes = (Date.now() - refreshedAtMs) / 60000;
   if (Number.isNaN(ageMinutes)) {
     return { label: "Stale", variant: "destructive" };
@@ -64,6 +68,7 @@ type BindingsTableProps = {
   onToggleSelectBinding: (bindingId: number, checked: boolean) => void;
   onCheckBalance: (bindingId: number) => void;
   onRefreshTokenLocation: (bindingId: number) => void;
+  onVerifyReseller: (bindingId: number) => void;
   onOpenRequestLogin: (binding: Binding) => void;
   onOpenVerify: (binding: Binding) => void;
   onOpenLogout: (binding: Binding) => void;
@@ -80,6 +85,7 @@ export function BindingsTable({
   onToggleSelectBinding,
   onCheckBalance,
   onRefreshTokenLocation,
+  onVerifyReseller,
   onOpenRequestLogin,
   onOpenVerify,
   onOpenLogout,
@@ -103,7 +109,7 @@ export function BindingsTable({
             <TableHead className="w-[150px]">Step</TableHead>
             <TableHead className="w-[100px]">Reseller</TableHead>
             <TableHead className="w-[120px]">Balance</TableHead>
-            <TableHead className="w-[100px]">Token</TableHead>
+            <TableHead className="w-[100px]">token_loc</TableHead>
             <TableHead className="w-[160px]">Device</TableHead>
             <TableHead className="w-[90px] text-right">Actions</TableHead>
           </TableRow>
@@ -185,7 +191,10 @@ export function BindingsTable({
                           <BadgeCheck className="mr-2 h-4 w-4" /> Check Balance
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onRefreshTokenLocation(binding.id)}>
-                          <RefreshCw className="mr-2 h-4 w-4" /> Refresh Token Location
+                          <RefreshCw className="mr-2 h-4 w-4" /> Refresh token_loc
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onVerifyReseller(binding.id)}>
+                          <ScanSearch className="mr-2 h-4 w-4" /> Verify Reseller
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onOpenRequestLogin(binding)}>
                           <KeyRound className="mr-2 h-4 w-4" /> Request Login

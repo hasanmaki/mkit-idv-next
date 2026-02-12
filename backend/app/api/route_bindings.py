@@ -174,6 +174,16 @@ async def refresh_token_location(
     return await service.refresh_token_location(binding_id)
 
 
+@router.post("/{binding_id}/verify-reseller", response_model=BindingRead)
+async def verify_reseller(
+    binding_id: int,
+    session: AsyncSession = Depends(get_db_session),
+) -> Bindings:
+    """Re-check reseller status and update binding/account flags."""
+    service = BindingService(session)
+    return await service.verify_reseller(binding_id)
+
+
 @router.post("/{binding_id}/verify-login")
 async def verify_login(
     binding_id: int,

@@ -203,11 +203,26 @@ export function useBindings() {
         `/v1/bindings/${bindingId}/refresh-token-location`,
         "POST",
       );
-      toast.success(`Token location refreshed for binding #${bindingId}.`);
+      toast.success(`token_loc refreshed for binding #${bindingId}.`);
       await loadBindings();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Refresh token location binding #${bindingId} gagal.`);
+      toast.error(`Refresh token_loc binding #${bindingId} gagal.`);
+    } finally {
+      clearRowAction(bindingId);
+    }
+  }
+
+  async function verifyResellerBinding(bindingId: number): Promise<void> {
+    try {
+      setErrorMessage(null);
+      markRowAction(bindingId, "verify_reseller");
+      await apiRequest<Binding>(`/v1/bindings/${bindingId}/verify-reseller`, "POST");
+      toast.success(`Reseller verified for binding #${bindingId}.`);
+      await loadBindings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error(`Verify reseller binding #${bindingId} gagal.`);
     } finally {
       clearRowAction(bindingId);
     }
@@ -356,6 +371,12 @@ export function useBindings() {
     setSelectedBindingIds([]);
   }
 
+  async function bulkVerifyReseller(): Promise<void> {
+    await runBulkSelected("verify reseller", async (bindingId) => {
+      await apiRequest<Binding>(`/v1/bindings/${bindingId}/verify-reseller`, "POST");
+    });
+  }
+
   return {
     bindings,
     selectedBindingIds,
@@ -383,6 +404,7 @@ export function useBindings() {
     requestBindingLogin,
     checkBalanceBinding,
     refreshTokenLocationBinding,
+    verifyResellerBinding,
     verifyBinding,
     logoutBinding,
     deleteBinding,
@@ -391,5 +413,6 @@ export function useBindings() {
     bulkRequestLogin,
     bulkLogout,
     bulkDelete,
+    bulkVerifyReseller,
   };
 }

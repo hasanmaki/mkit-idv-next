@@ -744,6 +744,64 @@ class BindingService:
             token_location_refreshed_at=datetime.utcnow(),
         )
 
+    async def verify_reseller(self, binding_id: int) -> Bindings:
+        """Re-check reseller status from provider and persist it."""
+        binding = await self.bindings.get(self.session, binding_id)
+        if not binding:
+            raise AppNotFoundError(
+                message=f"Binding ID {binding_id} tidak ditemukan.",
+                error_code="binding_not_found",
+                context={"binding_id": binding_id},
+            )
+
+        account = await self.accounts.get(self.session, binding.account_id)
+        if not account:
+            raise AppNotFoundError(
+                message=f"Account ID {binding.account_id} tidak ditemukan.",
+                error_code="account_not_found",
+                context={"account_id": binding.account_id},
+            )
+
+        server = await self.servers.get(self.session, binding.server_id)
+        if not server:
+            raise AppNotFoundError(
+                message=f"Server ID {binding.server_id} tidak ditemukan.",
+                error_code="server_not_found",
+                context={"server_id": binding.server_id},
+            )
+
+        idv = IdvService.from_server(server)
+        list_resp = await idv.list_produk(account.msisdn)
+
+        is_reseller = False
+        detected_device_id = None
+        if isinstance(list_resp, dict):
+            is_reseller = (
+                list_resp.get("status") == "200"
+                or list_resp.get("status_msg") == "success"
+                or list_resp.get("data", {})
+                .get("product_group", {})
+                .get("product_type")
+                == "reseller"
+            )
+            detected_device_id = (
+                list_resp.get("data", {}).get("identifier", {}).get("device_id")
+            )
+
+        updated = await self.bindings.update(
+            self.session,
+            binding,
+            is_reseller=is_reseller,
+            device_id=detected_device_id or binding.device_id,
+        )
+        await self.accounts.update(
+            self.session,
+            account,
+            is_reseller=is_reseller,
+            last_device_id=detected_device_id or account.last_device_id,
+        )
+        return updated
+
     async def delete_binding(self, binding_id: int) -> None:
         """Delete binding by ID."""
         deleted = await self.bindings.delete(self.session, binding_id)
