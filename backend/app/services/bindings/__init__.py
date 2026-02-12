@@ -1,4 +1,8 @@
 from app.services.bindings.schemas import (
+    BindingBulkItemInput,
+    BindingBulkItemResult,
+    BindingBulkRequest,
+    BindingBulkResult,
     BindingCreate,
     BindingLogout,
     BindingRead,
@@ -11,6 +15,10 @@ from app.services.bindings.service import BindingService
 
 __all__ = [
     "BindingService",
+    "BindingBulkItemInput",
+    "BindingBulkItemResult",
+    "BindingBulkRequest",
+    "BindingBulkResult",
     "BindingCreate",
     "BindingLogout",
     "BindingRead",

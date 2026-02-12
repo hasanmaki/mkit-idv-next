@@ -7,6 +7,8 @@ import {
   defaultBindingFilters,
   type AccountOption,
   type Binding,
+  type BindingBulkPayload,
+  type BindingBulkResult,
   type BindingCreatePayload,
   type BindingFilters,
   type BindingLogoutPayload,
@@ -43,6 +45,7 @@ export function useBindings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
+  const [bulkResult, setBulkResult] = useState<BindingBulkResult | null>(null);
 
   useEffect(() => {
     void loadBindings();
@@ -191,6 +194,47 @@ export function useBindings() {
     }
   }
 
+  async function dryRunBulkBindings(payload: BindingBulkPayload): Promise<void> {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const result = await apiRequest<BindingBulkResult>(
+        "/v1/bindings/bulk/dry-run",
+        "POST",
+        payload,
+      );
+      setBulkResult(result);
+      toast.success("Dry run bulk binding selesai.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error("Dry run bulk binding gagal.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function createBulkBindings(payload: BindingBulkPayload): Promise<void> {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const result = await apiRequest<BindingBulkResult>(
+        "/v1/bindings/bulk",
+        "POST",
+        payload,
+      );
+      setBulkResult(result);
+      toast.success(
+        `Bulk binding selesai. Created ${result.total_created}, failed ${result.total_failed}.`,
+      );
+      await loadBindings();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
+      toast.error("Create bulk binding gagal.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return {
     bindings,
     serverOptions,
@@ -200,6 +244,7 @@ export function useBindings() {
     errorMessage,
     isLoading,
     isSubmitting,
+    bulkResult,
     pendingRowActions,
     activeCount,
     loadBindings,
@@ -207,6 +252,8 @@ export function useBindings() {
     applyFilters,
     resetFilters,
     createBinding,
+    dryRunBulkBindings,
+    createBulkBindings,
     requestBindingLogin,
     verifyBinding,
     logoutBinding,

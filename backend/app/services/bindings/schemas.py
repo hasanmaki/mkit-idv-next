@@ -121,3 +121,53 @@ class BindingViewRead(BaseModel):
     account_batch_id: str | None = Field(None, examples=["batch-2026-02-10"])
 
     model_config = {"use_enum_values": True}
+
+
+class BindingBulkItemInput(BaseModel):
+    """Single binding item for bulk create or dry-run."""
+
+    server_id: int | None = Field(None, examples=[1])
+    account_id: int | None = Field(None, examples=[100])
+    port: int | None = Field(None, examples=[9900])
+    msisdn: str | None = Field(None, examples=["085773197010"])
+    batch_id: str | None = Field(None, examples=["batch-2026-02-10"])
+    balance_start: int | None = Field(None, examples=[7851])
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingBulkRequest(BaseModel):
+    """Bulk binding request payload."""
+
+    items: list[BindingBulkItemInput] = Field(..., min_length=1, max_length=2000)
+    stop_on_first_error: bool = Field(False, examples=[False])
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingBulkItemResult(BaseModel):
+    """Per-item result for bulk binding operations."""
+
+    index: int = Field(..., examples=[0])
+    status: str = Field(..., examples=["created", "would_create", "failed"])
+    reason: str | None = Field(None, examples=["server not found"])
+    server_id: int | None = Field(None, examples=[1])
+    account_id: int | None = Field(None, examples=[100])
+    port: int | None = Field(None, examples=[9900])
+    msisdn: str | None = Field(None, examples=["085773197010"])
+    batch_id: str | None = Field(None, examples=["batch-2026-02-10"])
+    binding: BindingRead | None = None
+
+    model_config = {"use_enum_values": True}
+
+
+class BindingBulkResult(BaseModel):
+    """Bulk binding summary result."""
+
+    dry_run: bool = Field(..., examples=[True])
+    total_requested: int = Field(..., examples=[10])
+    total_created: int = Field(..., examples=[8])
+    total_failed: int = Field(..., examples=[2])
+    items: list[BindingBulkItemResult]
+
+    model_config = {"use_enum_values": True}

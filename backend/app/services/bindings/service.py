@@ -16,8 +16,13 @@ from app.repos.account_repo import AccountRepository
 from app.repos.binding_repo import BindingRepository
 from app.repos.server_repo import ServerRepository
 from app.services.bindings.schemas import (
+    BindingBulkItemInput,
+    BindingBulkItemResult,
+    BindingBulkRequest,
+    BindingBulkResult,
     BindingCreate,
     BindingLogout,
+    BindingRead,
     BindingRequestLogin,
     BindingUpdate,
     BindingViewRead,
@@ -463,6 +468,195 @@ class BindingService:
                 )
             )
         return items
+
+    async def _resolve_bulk_ids(
+        self, item: BindingBulkItemInput
+    ) -> tuple[int, int, str]:
+        """Resolve server/account IDs from direct IDs or port/msisdn pair."""
+        if item.server_id is not None and item.account_id is not None:
+            account = await self.accounts.get(self.session, item.account_id)
+            if not account:
+                raise AppValidationError(
+                    message=f"Account ID {item.account_id} tidak ditemukan.",
+                    error_code="account_not_found",
+                    context={"account_id": item.account_id},
+                )
+            server = await self.servers.get(self.session, item.server_id)
+            if not server:
+                raise AppValidationError(
+                    message=f"Server ID {item.server_id} tidak ditemukan.",
+                    error_code="server_not_found",
+                    context={"server_id": item.server_id},
+                )
+            return server.id, account.id, account.batch_id
+
+        if item.port is None or item.msisdn is None:
+            raise AppValidationError(
+                message="Item bulk wajib server_id+account_id atau port+msisdn.",
+                error_code="binding_bulk_invalid_item",
+                context=item.model_dump(),
+            )
+
+        server = await self.servers.get_by(self.session, port=item.port)
+        if not server:
+            raise AppValidationError(
+                message=f"Server port {item.port} tidak ditemukan.",
+                error_code="server_not_found",
+                context={"port": item.port},
+            )
+
+        if item.batch_id:
+            account = await self.accounts.get_by_msisdn_batch(
+                self.session, msisdn=item.msisdn, batch_id=item.batch_id
+            )
+            if not account:
+                raise AppValidationError(
+                    message="Account msisdn+batch_id tidak ditemukan.",
+                    error_code="account_not_found",
+                    context={"msisdn": item.msisdn, "batch_id": item.batch_id},
+                )
+            return server.id, account.id, account.batch_id
+
+        stmt = select(Accounts).where(Accounts.msisdn == item.msisdn)
+        accounts = (await self.session.execute(stmt)).scalars().all()
+        if len(accounts) == 0:
+            raise AppValidationError(
+                message=f"Account dengan msisdn {item.msisdn} tidak ditemukan.",
+                error_code="account_not_found",
+                context={"msisdn": item.msisdn},
+            )
+        if len(accounts) > 1:
+            raise AppValidationError(
+                message=(
+                    f"MSISDN {item.msisdn} muncul di beberapa batch. "
+                    "Sertakan batch_id."
+                ),
+                error_code="account_batch_required",
+                context={"msisdn": item.msisdn, "count": len(accounts)},
+            )
+        return server.id, accounts[0].id, accounts[0].batch_id
+
+    async def _build_bulk_result(
+        self, payload: BindingBulkRequest, *, dry_run: bool
+    ) -> BindingBulkResult:
+        """Build bulk dry-run/create result."""
+        items: list[BindingBulkItemResult] = []
+        total_created = 0
+        total_failed = 0
+        seen_server_ids: set[int] = set()
+        seen_account_ids: set[int] = set()
+
+        for index, item in enumerate(payload.items):
+            try:
+                server_id, account_id, batch_id = await self._resolve_bulk_ids(item)
+
+                if server_id in seen_server_ids:
+                    raise AppValidationError(
+                        message="Server duplicate di payload bulk.",
+                        error_code="binding_bulk_duplicate_server",
+                        context={"index": index, "server_id": server_id},
+                    )
+                if account_id in seen_account_ids:
+                    raise AppValidationError(
+                        message="Account duplicate di payload bulk.",
+                        error_code="binding_bulk_duplicate_account",
+                        context={"index": index, "account_id": account_id},
+                    )
+
+                active_server = await self.bindings.get_active_by_server(
+                    self.session, server_id=server_id
+                )
+                if active_server:
+                    raise AppValidationError(
+                        message="Server masih memiliki binding aktif.",
+                        error_code="binding_server_active",
+                        context={"server_id": server_id},
+                    )
+
+                active_account = await self.bindings.get_active_by_account(
+                    self.session, account_id=account_id
+                )
+                if active_account:
+                    raise AppValidationError(
+                        message="Account masih memiliki binding aktif.",
+                        error_code="binding_account_active",
+                        context={"account_id": account_id},
+                    )
+
+                seen_server_ids.add(server_id)
+                seen_account_ids.add(account_id)
+
+                if dry_run:
+                    items.append(
+                        BindingBulkItemResult(
+                            index=index,
+                            status="would_create",
+                            reason=None,
+                            server_id=server_id,
+                            account_id=account_id,
+                            port=item.port,
+                            msisdn=item.msisdn,
+                            batch_id=batch_id,
+                            binding=None,
+                        )
+                    )
+                    total_created += 1
+                    continue
+
+                binding = await self.create_binding(
+                    BindingCreate(
+                        server_id=server_id,
+                        account_id=account_id,
+                        balance_start=item.balance_start,
+                    )
+                )
+                items.append(
+                    BindingBulkItemResult(
+                        index=index,
+                        status="created",
+                        reason=None,
+                        server_id=server_id,
+                        account_id=account_id,
+                        port=item.port,
+                        msisdn=item.msisdn,
+                        batch_id=batch_id,
+                        binding=BindingRead.model_validate(binding),
+                    )
+                )
+                total_created += 1
+            except Exception as exc:
+                total_failed += 1
+                items.append(
+                    BindingBulkItemResult(
+                        index=index,
+                        status="failed",
+                        reason=str(exc),
+                        server_id=item.server_id,
+                        account_id=item.account_id,
+                        port=item.port,
+                        msisdn=item.msisdn,
+                        batch_id=item.batch_id,
+                        binding=None,
+                    )
+                )
+                if payload.stop_on_first_error:
+                    break
+
+        return BindingBulkResult(
+            dry_run=dry_run,
+            total_requested=len(payload.items),
+            total_created=total_created,
+            total_failed=total_failed,
+            items=items,
+        )
+
+    async def bulk_create_bindings(self, payload: BindingBulkRequest) -> BindingBulkResult:
+        """Create bindings in bulk."""
+        return await self._build_bulk_result(payload, dry_run=False)
+
+    async def bulk_dry_run_bindings(self, payload: BindingBulkRequest) -> BindingBulkResult:
+        """Dry-run bulk binding creation without writes."""
+        return await self._build_bulk_result(payload, dry_run=True)
 
     async def delete_binding(self, binding_id: int) -> None:
         """Delete binding by ID."""

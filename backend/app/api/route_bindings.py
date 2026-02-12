@@ -7,6 +7,8 @@ from app.database.session import get_db_session
 from app.models.bindings import Bindings
 from app.models.steps import BindingStep
 from app.services.bindings import (
+    BindingBulkRequest,
+    BindingBulkResult,
     BindingCreate,
     BindingLogout,
     BindingRead,
@@ -18,6 +20,30 @@ from app.services.bindings import (
 )
 
 router = APIRouter()
+
+
+@router.post(
+    "/bulk/dry-run",
+    response_model=BindingBulkResult,
+    status_code=status.HTTP_200_OK,
+)
+async def bulk_dry_run_bindings(
+    payload: BindingBulkRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> BindingBulkResult:
+    """Dry-run bulk binding creation without database writes."""
+    service = BindingService(session)
+    return await service.bulk_dry_run_bindings(payload)
+
+
+@router.post("/bulk", response_model=BindingBulkResult, status_code=status.HTTP_201_CREATED)
+async def bulk_create_bindings(
+    payload: BindingBulkRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> BindingBulkResult:
+    """Create bindings in bulk mode."""
+    service = BindingService(session)
+    return await service.bulk_create_bindings(payload)
 
 
 @router.post("", response_model=BindingRead, status_code=status.HTTP_201_CREATED)

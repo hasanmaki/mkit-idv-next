@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 
 import {
   BindingCreateFields,
@@ -31,7 +42,7 @@ import {
 } from "../components/BindingForms";
 import { BindingsTable } from "../components/BindingsTable";
 import { useBindings } from "../hooks/useBindings";
-import type { Binding } from "../types";
+import type { Binding, BindingBulkItemInput } from "../types";
 
 const defaultCreateForm: BindingCreateForm = {
   server_id: "",
@@ -70,6 +81,12 @@ export function BindingsPage() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [logoutForm, setLogoutForm] = useState(defaultLogoutForm);
   const [logoutTarget, setLogoutTarget] = useState<Binding | null>(null);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState<"port_msisdn" | "server_account">(
+    "port_msisdn",
+  );
+  const [bulkRawText, setBulkRawText] = useState("");
+  const [bulkStopOnFirstError, setBulkStopOnFirstError] = useState(false);
 
   async function onCreateBinding(): Promise<void> {
     if (!createForm.server_id || !createForm.account_id) {
@@ -139,6 +156,47 @@ export function BindingsPage() {
     setLogoutTarget(null);
   }
 
+  function parseBulkLines(): BindingBulkItemInput[] {
+    const lines = bulkRawText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const items: BindingBulkItemInput[] = [];
+    for (const line of lines) {
+      const parts = line
+        .split(/[,\t;]/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (bulkMode === "port_msisdn") {
+        items.push({
+          port: Number(parts[0]),
+          msisdn: parts[1],
+          batch_id: parts[2] || undefined,
+        });
+      } else {
+        items.push({
+          server_id: Number(parts[0]),
+          account_id: Number(parts[1]),
+        });
+      }
+    }
+    return items;
+  }
+
+  async function onBulkDryRun(): Promise<void> {
+    await vm.dryRunBulkBindings({
+      items: parseBulkLines(),
+      stop_on_first_error: bulkStopOnFirstError,
+    });
+  }
+
+  async function onBulkCreate(): Promise<void> {
+    await vm.createBulkBindings({
+      items: parseBulkLines(),
+      stop_on_first_error: bulkStopOnFirstError,
+    });
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -193,6 +251,9 @@ export function BindingsPage() {
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => void vm.loadBindings()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+              </Button>
+              <Button variant="outline" onClick={() => setIsBulkOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" /> Bulk Builder
               </Button>
               <Button onClick={() => setIsCreateOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" /> Create Binding
@@ -252,6 +313,98 @@ export function BindingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Bindings</DialogTitle>
+            <DialogDescription>
+              Input multiline CSV: `port,msisdn[,batch_id]` atau `server_id,account_id`.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <Button
+                type="button"
+                variant={bulkMode === "port_msisdn" ? "default" : "secondary"}
+                onClick={() => setBulkMode("port_msisdn")}
+              >
+                Port + MSISDN
+              </Button>
+              <Button
+                type="button"
+                variant={bulkMode === "server_account" ? "default" : "secondary"}
+                onClick={() => setBulkMode("server_account")}
+              >
+                Server ID + Account ID
+              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                <Label htmlFor="bulk-stop-first">Stop on first error</Label>
+                <Switch
+                  id="bulk-stop-first"
+                  checked={bulkStopOnFirstError}
+                  onCheckedChange={setBulkStopOnFirstError}
+                />
+              </div>
+            </div>
+            <Textarea
+              rows={10}
+              value={bulkRawText}
+              onChange={(event) => setBulkRawText(event.target.value)}
+              placeholder={
+                bulkMode === "port_msisdn"
+                  ? "9900,08577096575,batch-a\n9901,08577096576,batch-a"
+                  : "1,100\n2,101"
+              }
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => void onBulkDryRun()}>
+              Dry Run
+            </Button>
+            <Button onClick={() => void onBulkCreate()} disabled={vm.isSubmitting}>
+              Save Bulk
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {vm.bulkResult ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk Result</CardTitle>
+            <CardDescription>
+              Requested: {vm.bulkResult.total_requested} | Created:{" "}
+              {vm.bulkResult.total_created} | Failed: {vm.bulkResult.total_failed} | Mode:{" "}
+              {vm.bulkResult.dry_run ? "DRY RUN" : "CREATE"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Server</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Reason</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vm.bulkResult.items.map((item) => (
+                  <TableRow key={`${item.index}-${item.server_id ?? "na"}-${item.account_id ?? "na"}`}>
+                    <TableCell>{item.index + 1}</TableCell>
+                    <TableCell>{item.status}</TableCell>
+                    <TableCell>{item.server_id ?? item.port ?? "-"}</TableCell>
+                    <TableCell>{item.account_id ?? item.msisdn ?? "-"}</TableCell>
+                    <TableCell className="max-w-[420px] truncate">{item.reason ?? "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Dialog open={isRequestLoginOpen} onOpenChange={setIsRequestLoginOpen}>
         <DialogContent>

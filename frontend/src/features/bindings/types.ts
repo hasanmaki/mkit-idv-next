@@ -65,6 +65,40 @@ export type BindingRequestLoginPayload = {
   pin?: string | null;
 };
 
+export type BindingBulkItemInput = {
+  server_id?: number;
+  account_id?: number;
+  port?: number;
+  msisdn?: string;
+  batch_id?: string;
+  balance_start?: number | null;
+};
+
+export type BindingBulkPayload = {
+  items: BindingBulkItemInput[];
+  stop_on_first_error: boolean;
+};
+
+export type BindingBulkItemResult = {
+  index: number;
+  status: "created" | "would_create" | "failed";
+  reason: string | null;
+  server_id: number | null;
+  account_id: number | null;
+  port: number | null;
+  msisdn: string | null;
+  batch_id: string | null;
+  binding: Binding | null;
+};
+
+export type BindingBulkResult = {
+  dry_run: boolean;
+  total_requested: number;
+  total_created: number;
+  total_failed: number;
+  items: BindingBulkItemResult[];
+};
+
 export type BindingLogoutPayload = {
   account_status?: AccountStatus | null;
   last_error_code?: string | null;
