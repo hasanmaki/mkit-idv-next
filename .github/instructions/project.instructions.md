@@ -55,6 +55,72 @@ Status `transactions.status`:
 - `check_balance_and_continue_or_stop`: allowed `PROCESSING`, `RESUMED`, `PAUSED`
 - `stop`: allowed `PROCESSING`, `RESUMED`, `PAUSED`, `SUSPECT`
 
+## Transaction Flow Rules (Current)
+
+`POST /v1/transactions/start` flow:
+
+1. validate binding step = `token_login_fetched`
+2. fetch `balance_start`
+3. **precheck saldo sebelum beli**
+4. jika cukup: call `trx_idv -> status_idv -> snapshot(balance_end)`
+
+Precheck saldo:
+
+- jika `balance_start < limit_harga`:
+  - provider `trx_idv` **tidak dipanggil**
+  - transaction dibuat sebagai audit record lokal
+  - status langsung `GAGAL`
+  - `error_message`: `insufficient_balance_before_start: <balance> < <limit_harga>`
+  - snapshot tetap diisi (`balance_start`, `balance_end=balance_start`, precheck raw)
+
+On-demand balance decision:
+
+- endpoint `POST /v1/transactions/{id}/check`
+  - jika saldo cukup: `continue`
+  - jika saldo kurang: auto `stop` (status `GAGAL`)
+
+Catatan:
+
+- transaction service saat ini masih per-request (`start/continue/otp/stop/pause/resume`)
+- belum ada loop worker otomatis lintas transaksi
+
+## Planned Auto Orchestration (Next)
+
+Target pendekatan:
+
+- `worker` per `binding_id`
+- control plane via endpoint:
+  - `start`
+  - `pause`
+  - `resume`
+  - `stop`
+
+Stop condition utama:
+
+1. manual stop dari user
+2. `insufficient_balance_before_start` (hard stop worker)
+
+## Hard Stop Semantics (Very Important)
+
+`hard stop` bersifat **cooperative** dan dievaluasi di boundary loop, bukan memotong HTTP call yang sedang berjalan.
+
+Rule:
+
+1. jika user kirim `stop` saat worker sedang menjalankan step (contoh `status_idv`), step tersebut dibiarkan selesai
+2. setelah step selesai, worker lanjut ke **ujung iterasi saat ini**
+3. sebelum masuk iterasi berikutnya, worker wajib cek stop flag
+4. jika stop flag aktif, worker berhenti dan **tidak** memulai transaksi berikutnya
+
+Alasan:
+
+- mencegah state setengah jalan (partial update snapshot/status)
+- menghindari data korup atau race condition antar update status
+
+Untuk skala `10-30` server:
+
+- mode awal: in-memory worker registry masih layak untuk single app instance
+- mode production/reliable: pindah ke Redis (shared state + distributed control)
+
 # Device ID Rule (Updated)
 
 `device_id` **bukan input manual server**.
@@ -128,3 +194,12 @@ Result per item: `would_create|created|failed` + reason.
 - `POST /v1/bindings/{id}/logout`
 - `DELETE /v1/bindings/{id}`
 
+# Tools Endpoint Note
+
+`/v1/tools/*` adalah endpoint ad-hoc/debug.
+
+- Resolusi server tidak lagi memakai `accounts.server_id` (field tersebut sudah tidak ada).
+- Resolusi saat ini:
+  1. pakai `server_id` jika dikirim
+  2. jika tidak ada, pakai binding aktif dari account/msisdn
+  3. fallback ke server aktif pertama

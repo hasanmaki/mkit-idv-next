@@ -9,8 +9,8 @@ from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.accounts import Accounts
 from app.models.bindings import Bindings
-from app.models.steps import BindingStep
 from app.models.servers import Servers
+from app.models.steps import BindingStep
 from app.models.transaction_statuses import TransactionOtpStatus, TransactionStatus
 from app.models.transactions import Transactions, TransactionSnapshots
 from app.repos.account_repo import AccountRepository
@@ -212,6 +212,73 @@ class TransactionService:
         idv = IdvService.from_server(server)
 
         balance_start_int = await self._fetch_balance_int(idv, account.msisdn)
+        if (
+            balance_start_int is not None
+            and payload.limit_harga > 0
+            and balance_start_int < payload.limit_harga
+        ):
+            error_message = (
+                "insufficient_balance_before_start: "
+                f"{balance_start_int} < {payload.limit_harga}"
+            )
+            local_trx_id = (
+                f"precheck-{binding.id}-{int(datetime.utcnow().timestamp() * 1000)}"
+            )
+            trx = await self.create_transaction(
+                TransactionCreate(
+                    binding_id=binding.id,
+                    trx_id=local_trx_id,
+                    t_id=None,
+                    product_id=payload.product_id,
+                    email=payload.email,
+                    limit_harga=payload.limit_harga,
+                    amount=payload.limit_harga,
+                    is_success=None,
+                    otp_required=False,
+                    error_message=error_message,
+                ),
+                snapshot=TransactionSnapshotCreate(
+                    balance_start=balance_start_int,
+                    trx_idv_raw={
+                        "precheck": {
+                            "status": "stopped",
+                            "reason": "insufficient_balance_before_start",
+                            "balance_start": balance_start_int,
+                            "limit_harga": payload.limit_harga,
+                        }
+                    },
+                ),
+            )
+            await self.update_status(
+                trx.id,
+                TransactionStatusUpdate(
+                    status=TransactionStatus.GAGAL,
+                    is_success=None,
+                    voucher_code=None,
+                    error_message=error_message,
+                    otp_status=None,
+                ),
+            )
+            await self.update_snapshot(
+                trx.id,
+                TransactionSnapshotUpdate(
+                    balance_end=balance_start_int,
+                    status_idv_raw={
+                        "precheck_result": "stopped_insufficient_balance"
+                    },
+                ),
+            )
+            logger.info(
+                "Transaction auto-stopped before trx_idv due to insufficient balance",
+                extra={
+                    "binding_id": binding.id,
+                    "account_id": account.id,
+                    "balance_start": balance_start_int,
+                    "limit_harga": payload.limit_harga,
+                    "transaction_id": trx.id,
+                },
+            )
+            return await self.get_transaction(trx.id)
 
         trx_resp = await idv.trx_voucher_idv(
             account.msisdn,
