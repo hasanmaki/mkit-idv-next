@@ -19,9 +19,15 @@ router = APIRouter()
 
 
 @router.post(
+    "",
+    response_model=AccountRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@router.post(
     "/",
     response_model=AccountRead,
     status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
 )
 async def create_account(
     payload: AccountCreateSingle,
@@ -47,9 +53,10 @@ async def create_accounts_bulk(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[AccountRead],
 )
+@router.get("/", response_model=list[AccountRead], include_in_schema=False)
 async def list_accounts(
     skip: int = 0,
     limit: int = 100,
@@ -96,7 +103,8 @@ async def update_account(
     return await service.update_account(account_id, payload)
 
 
-@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
 async def delete_account(
     payload: AccountDelete,
     session: AsyncSession = Depends(get_db_session),

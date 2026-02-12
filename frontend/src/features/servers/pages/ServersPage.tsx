@@ -56,7 +56,7 @@ export function ServersPage() {
   const vm = useServers();
 
   return (
-    <main className="min-h-screen w-full space-y-6 px-4 py-8 lg:px-8">
+    <section className="space-y-6">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Server Management</h1>
         <p className="text-sm text-muted-foreground">
@@ -278,6 +278,6 @@ export function ServersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </main>
+    </section>
   );
 }
