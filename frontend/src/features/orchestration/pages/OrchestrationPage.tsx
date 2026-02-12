@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,6 +19,20 @@ import {
 } from "@/components/ui/table";
 
 import { useOrchestration } from "../hooks/useOrchestration";
+import type { WorkerState } from "../types";
+
+function stateBadgeVariant(state: WorkerState): "default" | "secondary" | "destructive" | "outline" {
+  if (state === "running") {
+    return "default";
+  }
+  if (state === "paused") {
+    return "secondary";
+  }
+  if (state === "stopped") {
+    return "destructive";
+  }
+  return "outline";
+}
 
 export function OrchestrationPage() {
   const vm = useOrchestration();
@@ -232,10 +247,14 @@ export function OrchestrationPage() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Status Result</CardTitle>
-            <CardDescription>Hasil endpoint status untuk binding terpilih.</CardDescription>
-          </CardHeader>
+        <CardHeader>
+          <CardTitle>Status Result</CardTitle>
+          <CardDescription>
+            Hasil endpoint status untuk binding terpilih.
+            {" "}
+            {vm.statusUpdatedAt ? `Last update: ${new Date(vm.statusUpdatedAt).toLocaleTimeString()}` : ""}
+          </CardDescription>
+        </CardHeader>
           <CardContent className="max-h-[300px] overflow-auto">
             <pre className="text-xs">{JSON.stringify(vm.statusResult, null, 2)}</pre>
           </CardContent>
@@ -254,7 +273,11 @@ export function OrchestrationPage() {
       <Card>
         <CardHeader>
           <CardTitle>Monitor</CardTitle>
-          <CardDescription>Active workers, lock owner, dan heartbeat terkini.</CardDescription>
+          <CardDescription>
+            Active workers, lock owner, dan heartbeat terkini (auto-refresh 2.5s).
+            {" "}
+            {vm.monitorUpdatedAt ? `Last update: ${new Date(vm.monitorUpdatedAt).toLocaleTimeString()}` : ""}
+          </CardDescription>
         </CardHeader>
         <CardContent className="max-h-[420px] overflow-auto rounded-md border p-0">
           <Table>
@@ -273,7 +296,9 @@ export function OrchestrationPage() {
               {(vm.monitorResult?.items ?? []).map((item) => (
                 <TableRow key={`monitor-${item.binding_id}`}>
                   <TableCell>#{item.binding_id}</TableCell>
-                  <TableCell>{item.state}</TableCell>
+                  <TableCell>
+                    <Badge variant={stateBadgeVariant(item.state)}>{item.state}</Badge>
+                  </TableCell>
                   <TableCell>{item.reason ?? "-"}</TableCell>
                   <TableCell className="font-mono text-xs">{item.lock_owner ?? "-"}</TableCell>
                   <TableCell className="font-mono text-xs">{item.heartbeat_owner ?? "-"}</TableCell>
@@ -288,4 +313,3 @@ export function OrchestrationPage() {
     </section>
   );
 }
-

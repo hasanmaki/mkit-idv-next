@@ -25,11 +25,26 @@ export function useOrchestration() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [monitorUpdatedAt, setMonitorUpdatedAt] = useState<string | null>(null);
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     void loadBindings();
     void loadMonitor();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      void loadMonitor();
+      if (selectedBindingIds.length > 0) {
+        void fetchStatus(selectedBindingIds);
+      }
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [selectedBindingIds]);
 
   async function loadBindings(): Promise<void> {
     try {
@@ -50,6 +65,7 @@ export function useOrchestration() {
     try {
       const payload = await apiRequest<OrchestrationMonitorResult>("/v1/orchestration/monitor", "GET");
       setMonitorResult(payload);
+      setMonitorUpdatedAt(new Date().toISOString());
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
       toast.error("Gagal memuat monitor orchestration.");
@@ -150,6 +166,7 @@ export function useOrchestration() {
         binding_ids: bindingIds,
       });
       setStatusResult(result);
+      setStatusUpdatedAt(new Date().toISOString());
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
       toast.error("Gagal memuat status orchestration.");
@@ -167,6 +184,8 @@ export function useOrchestration() {
     isLoading,
     isSubmitting,
     errorMessage,
+    monitorUpdatedAt,
+    statusUpdatedAt,
     toggleSelectBinding,
     toggleSelectAll,
     loadBindings,
@@ -178,4 +197,3 @@ export function useOrchestration() {
     stopSelected,
   };
 }
-
