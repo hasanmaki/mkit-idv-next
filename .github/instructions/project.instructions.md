@@ -116,10 +116,10 @@ Alasan:
 - mencegah state setengah jalan (partial update snapshot/status)
 - menghindari data korup atau race condition antar update status
 
-Untuk skala `10-30` server:
+Untuk skala `10-30` server dan deployment multi-worker:
 
-- mode awal: in-memory worker registry masih layak untuk single app instance
-- mode production/reliable: pindah ke Redis (shared state + distributed control)
+- gunakan Redis sebagai shared worker registry sejak awal
+- in-memory registry tidak dipakai untuk runtime production
 
 # Device ID Rule (Updated)
 

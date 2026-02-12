@@ -43,6 +43,16 @@ class DatabaseConfig(BaseSettings):
     db_url: str = "sqlite+aiosqlite:///./application.db"
 
 
+class RedisConfig(BaseSettings):
+    """Redis configuration settings for orchestration runtime."""
+
+    model_config = {"env_prefix": "REDIS_"}
+
+    url: str = "redis://localhost:6379/0"
+    lock_ttl_seconds: int = 30
+    heartbeat_ttl_seconds: int = 90
+
+
 class AppSettings(BaseSettings):
     """Application settings for FastAPI app."""
 
@@ -50,6 +60,7 @@ class AppSettings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = True
     db: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
     cors: CorsConfig = Field(default_factory=CorsConfig)
     httpx: HttpxConfig = Field(default_factory=HttpxConfig)
 

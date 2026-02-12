@@ -57,11 +57,12 @@ Rekomendasi:
 
 ## Practical Decision
 
-Untuk kondisi sekarang:
+Keputusan project ini: **langsung Redis sebagai default runtime store**.
 
-1. mulai dengan in-memory (cepat, iterasi cepat)
-2. jaga interface `WorkerRegistry` abstrak dari awal
-3. migrasi backend implementasi ke Redis saat:
-- mulai multi-instance
-- butuh reliability lintas restart
-- worker count/concurrency naik signifikan
+Alasan:
+
+1. API akan dijalankan dengan multi-worker (`workers=4+`)
+2. throughput target tinggi dan butuh state konsisten lintas process
+3. control `start/pause/resume/stop` harus reliable di semua instance
+
+Implementasi tetap menjaga `WorkerRegistry` sebagai abstraction supaya backend tetap mudah diuji dan mudah diubah.
