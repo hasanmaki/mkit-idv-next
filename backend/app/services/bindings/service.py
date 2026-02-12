@@ -18,19 +18,19 @@ from app.repos.server_repo import ServerRepository
 from app.services.bindings.schemas import (
     BindingBulkItemInput,
     BindingBulkItemResult,
-    BindingProductItem,
-    BindingProductsPreviewItem,
-    BindingProductsPreviewRequest,
-    BindingProductsPreviewResult,
     BindingBulkRequest,
     BindingBulkResult,
     BindingCreate,
     BindingLogout,
+    BindingProductItem,
+    BindingProductsPreviewItem,
+    BindingProductsPreviewRequest,
+    BindingProductsPreviewResult,
     BindingRead,
     BindingRequestLogin,
     BindingUpdate,
-    BindingViewRead,
     BindingVerifyLogin,
+    BindingViewRead,
 )
 from app.services.idv import IdvService
 from app.services.workflow import WorkflowGuardService
@@ -65,6 +65,44 @@ class BindingService:
         if isinstance(message, str) and message.strip():
             return message
         return "Provider mengembalikan respons login yang tidak valid."
+
+    @staticmethod
+    def _extract_product_items(payload: dict) -> list[BindingProductItem]:
+        """Extract product list from provider payload with tolerant shape parsing."""
+        if not isinstance(payload, dict):
+            return []
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            return []
+
+        candidates = [
+            data.get("product_list"),
+            data.get("products"),
+            data.get("list"),
+        ]
+        product_list: list[dict] = []
+        for candidate in candidates:
+            if isinstance(candidate, list):
+                product_list = [item for item in candidate if isinstance(item, dict)]
+                break
+
+        products: list[BindingProductItem] = []
+        for item in product_list:
+            lower_price_raw = item.get("lower_price")
+            lower_price: int | None
+            try:
+                lower_price = int(str(lower_price_raw))
+            except (TypeError, ValueError):
+                lower_price = None
+
+            products.append(
+                BindingProductItem(
+                    id=item.get("id"),
+                    name=item.get("name"),
+                    lower_price=lower_price,
+                )
+            )
+        return products
 
     async def create_binding(self, data: BindingCreate) -> Bindings:
         """Create a new binding if server and account are available."""
@@ -923,24 +961,30 @@ class BindingService:
             try:
                 idv = IdvService.from_server(server)
                 products_resp = await idv.list_produk(account.msisdn)
-                product_list = (
-                    products_resp.get("data", {}).get("product_list", [])
+                products = self._extract_product_items(products_resp)
+                status_code = (
+                    str(products_resp.get("status"))
                     if isinstance(products_resp, dict)
-                    else []
+                    else None
                 )
-                products = [
-                    BindingProductItem(
-                        id=item.get("id"),
-                        name=item.get("name"),
-                        lower_price=(
-                            int(item.get("lower_price"))
-                            if str(item.get("lower_price", "")).isdigit()
-                            else None
-                        ),
-                    )
-                    for item in product_list
-                    if isinstance(item, dict)
-                ]
+                status_msg = (
+                    str(products_resp.get("status_msg"))
+                    if isinstance(products_resp, dict)
+                    and products_resp.get("status_msg") is not None
+                    else None
+                )
+
+                logger.info(
+                    "Binding products preview fetched",
+                    extra={
+                        "binding_id": binding_id,
+                        "account_id": account.id,
+                        "msisdn": account.msisdn,
+                        "provider_status": status_code,
+                        "provider_status_msg": status_msg,
+                        "product_count": len(products),
+                    },
+                )
                 items.append(
                     BindingProductsPreviewItem(
                         binding_id=binding_id,
@@ -948,12 +992,24 @@ class BindingService:
                         msisdn=account.msisdn,
                         is_reseller=binding.is_reseller,
                         status="ok",
-                        reason=None,
+                        reason=(
+                            "no_products_returned"
+                            if len(products) == 0
+                            else None
+                        ),
                         products=products,
                     )
                 )
                 total_ok += 1
             except Exception as exc:
+                logger.exception(
+                    "Binding products preview failed",
+                    extra={
+                        "binding_id": binding_id,
+                        "account_id": account.id,
+                        "msisdn": account.msisdn,
+                    },
+                )
                 total_failed += 1
                 items.append(
                     BindingProductsPreviewItem(

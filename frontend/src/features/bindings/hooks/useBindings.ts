@@ -380,10 +380,11 @@ export function useBindings() {
     });
   }
 
-  async function previewProductsForSelected(
+  async function previewProducts(
+    bindingIds: number[],
     resellerOnly: boolean = true,
   ): Promise<void> {
-    if (selectedBindingIds.length === 0) {
+    if (bindingIds.length === 0) {
       setProductsPreviewResult(null);
       return;
     }
@@ -394,7 +395,7 @@ export function useBindings() {
         "/v1/bindings/products/preview",
         "POST",
         {
-          binding_ids: selectedBindingIds,
+          binding_ids: bindingIds,
           reseller_only: resellerOnly,
         },
       );
@@ -406,6 +407,12 @@ export function useBindings() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function previewProductsForSelected(
+    resellerOnly: boolean = true,
+  ): Promise<void> {
+    await previewProducts(selectedBindingIds, resellerOnly);
   }
 
   return {
@@ -446,6 +453,7 @@ export function useBindings() {
     bulkLogout,
     bulkDelete,
     bulkVerifyReseller,
+    previewProducts,
     previewProductsForSelected,
   };
 }

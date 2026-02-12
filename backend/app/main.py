@@ -1,7 +1,10 @@
 """main entry point for the FastAPI application."""
 
 import os
+import subprocess
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +18,7 @@ from app.api import (
     route_transactions,
 )
 from app.core.exceptions.handlers import register_exception_handlers
-from app.core.log_config import configure_logging
+from app.core.log_config import configure_logging, get_logger
 from app.core.middlewares import RequestLoggingMiddleware, TraceIDMiddleware
 from app.core.settings import get_app_settings
 from app.database.session import sessionmanager
@@ -28,20 +31,12 @@ configure_logging()
 async def lifespan(app: FastAPI):  # noqa: ARG001
     """Lifespan context manager for FastAPI app."""
     # Startup: run database migrations
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    from app.core.log_config import get_logger
-
     logger = get_logger("lifespan")
 
     try:
-        # Get the project root directory (parent of backend)
-        project_root = Path(__file__).parent.parent
-
-        # Find alembic.ini in backend directory
-        alembic_ini = project_root / "backend" / "alembic.ini"
+        # backend root directory
+        backend_root = Path(__file__).resolve().parents[1]
+        alembic_ini = backend_root / "alembic.ini"
 
         if not alembic_ini.exists():
             logger.warning(
@@ -60,7 +55,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
                     "upgrade",
                     "head",
                 ],
-                cwd=str(project_root),
+                cwd=str(backend_root),
                 capture_output=True,
                 text=True,
                 check=False,

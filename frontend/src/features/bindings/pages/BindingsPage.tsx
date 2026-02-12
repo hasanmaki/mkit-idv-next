@@ -1,5 +1,5 @@
 import { Plus, RefreshCw, Search, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -106,6 +106,33 @@ export function BindingsPage() {
   const [bulkPin, setBulkPin] = useState("");
   const [otpQueue, setOtpQueue] = useState<Record<number, string>>({});
   const [isProductsPreviewOpen, setIsProductsPreviewOpen] = useState(false);
+  const [isPreviewPickerOpen, setIsPreviewPickerOpen] = useState(false);
+  const [previewBindingId, setPreviewBindingId] = useState("");
+
+  const resellerBindings = useMemo(
+    () =>
+      vm.bindings.filter(
+        (binding) => binding.is_reseller && binding.unbound_at === null,
+      ),
+    [vm.bindings],
+  );
+
+  useEffect(() => {
+    if (resellerBindings.length === 0) {
+      setPreviewBindingId("");
+      return;
+    }
+    if (!previewBindingId) {
+      setPreviewBindingId(String(resellerBindings[0].id));
+      return;
+    }
+    const stillExists = resellerBindings.some(
+      (binding) => String(binding.id) === previewBindingId,
+    );
+    if (!stillExists) {
+      setPreviewBindingId(String(resellerBindings[0].id));
+    }
+  }, [previewBindingId, resellerBindings]);
 
   async function onCreateBinding(): Promise<void> {
     if (!createForm.server_id || !createForm.account_id) {
@@ -245,7 +272,13 @@ export function BindingsPage() {
   }
 
   async function onPreviewProducts(): Promise<void> {
-    await vm.previewProductsForSelected(true);
+    const fallbackId = resellerBindings[0]?.id;
+    const selectedId = Number(previewBindingId || fallbackId || "");
+    if (!Number.isFinite(selectedId) || selectedId <= 0) {
+      return;
+    }
+    await vm.previewProducts([selectedId], true);
+    setIsPreviewPickerOpen(false);
     setIsProductsPreviewOpen(true);
   }
 
@@ -377,8 +410,8 @@ export function BindingsPage() {
             <Button
               size="sm"
               variant="secondary"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onPreviewProducts()}
+              disabled={resellerBindings.length === 0 || vm.isSubmitting}
+              onClick={() => setIsPreviewPickerOpen(true)}
             >
               Preview Products
             </Button>
@@ -616,6 +649,45 @@ export function BindingsPage() {
           <DialogFooter>
             <Button variant="secondary" onClick={() => setIsProductsPreviewOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPreviewPickerOpen} onOpenChange={setIsPreviewPickerOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Preview Products</DialogTitle>
+            <DialogDescription>
+              Pilih 1 binding reseller untuk ambil product list runtime.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="preview-binding-select">Binding reseller</Label>
+            <select
+              id="preview-binding-select"
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              value={previewBindingId}
+              onChange={(event) => setPreviewBindingId(event.target.value)}
+            >
+              <option value="">Pilih binding reseller...</option>
+              {resellerBindings.map((binding) => (
+                <option key={`preview-opt-${binding.id}`} value={binding.id}>
+                  #{binding.id} - {binding.account_msisdn ?? binding.account_id} @{" "}
+                  {binding.server_base_url ?? `server:${binding.server_id}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsPreviewPickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void onPreviewProducts()}
+              disabled={!previewBindingId || vm.isSubmitting}
+            >
+              Get Products
             </Button>
           </DialogFooter>
         </DialogContent>
