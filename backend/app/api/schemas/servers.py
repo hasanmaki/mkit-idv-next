@@ -2,11 +2,15 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class ServerCreateRequest(BaseModel):
     """Request schema for creating a server."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"name": "Server Production 1", "port": 9900}]}
+    )
 
     name: str = Field(
         ...,
@@ -94,6 +98,10 @@ class ServerCreateRequest(BaseModel):
 class ServerUpdateRequest(BaseModel):
     """Request schema for updating a server."""
 
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"description": "Updated server"}]}
+    )
+
     name: str | None = Field(None, min_length=3, max_length=100)
     description: str | None = Field(None, max_length=255)
     port: int | None = Field(None, gt=0, lt=65536, examples=[9901])
@@ -109,11 +117,15 @@ class ServerUpdateRequest(BaseModel):
 class ServerStatusUpdateRequest(BaseModel):
     """Request schema for toggling server status."""
 
+    model_config = ConfigDict(json_schema_extra={"examples": [{"is_active": False}]})
+
     is_active: bool
 
 
 class ServerResponse(BaseModel):
     """Response schema for server."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(..., examples=[1])
     name: str = Field(..., examples=["Server Production 1"])
@@ -131,11 +143,15 @@ class ServerResponse(BaseModel):
     created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
     updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 
-    model_config = {"from_attributes": True}
-
 
 class ServerBulkCreateRequest(BaseModel):
     """Request schema for bulk server creation."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"base_name": "Server", "start_port": 9900, "end_port": 9909}]
+        }
+    )
 
     base_name: str = Field(
         ...,
@@ -208,6 +224,8 @@ class ServerBulkCreateRequest(BaseModel):
 class ServerBulkItemResult(BaseModel):
     """Per-port result item for bulk creation."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     port: int = Field(..., examples=[9900])
     base_url: str = Field(..., examples=["http://10.0.0.3:9900"])
     status: str = Field(
@@ -217,11 +235,11 @@ class ServerBulkItemResult(BaseModel):
     reason: str | None = Field(None, examples=["port already in use"])
     server: ServerResponse | None = None
 
-    model_config = {"use_enum_values": True}
-
 
 class ServerBulkCreateResult(BaseModel):
     """Response schema for bulk server creation."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     dry_run: bool = Field(..., examples=[False])
     base_host: str = Field(..., examples=["http://10.0.0.3"])
@@ -232,5 +250,3 @@ class ServerBulkCreateResult(BaseModel):
     total_skipped: int = Field(..., examples=[2])
     total_failed: int = Field(..., examples=[0])
     items: list[ServerBulkItemResult]
-
-    model_config = {"use_enum_values": True}

@@ -1,11 +1,20 @@
 """Domain exceptions for business rule violations."""
 
+from app.core.exceptions.base import AppBaseExceptionError
 
-class DomainException(Exception):
+
+class DomainException(AppBaseExceptionError):
     """Base exception for all domain-related errors.
 
     Use this for business rule violations and domain invariants.
+
+    Extends AppBaseExceptionError to ensure proper HTTP status code
+    and error details are propagated to the API response.
     """
+
+    DEFAULT_STATUS_CODE: int = 400
+    DEFAULT_CODE: str = "domain_error"
+    EXPOSE_CONTEXT: bool = True
 
     def __init__(
         self,
@@ -13,15 +22,8 @@ class DomainException(Exception):
         error_code: str | None = None,
         context: dict | None = None,
     ):
-        self.message = message
-        self.error_code = error_code or "domain_error"
-        self.context = context or {}
-        super().__init__(self.message)
-
-    def to_dict(self) -> dict:
-        """Convert exception to dictionary for API responses."""
-        return {
-            "error_code": self.error_code,
-            "message": self.message,
-            "context": self.context,
-        }
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            context=context,
+        )

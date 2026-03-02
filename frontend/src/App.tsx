@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/error";
 import { AccountsPage } from "@/features/accounts/pages/AccountsPage";
 import { BindingsPage } from "@/features/bindings/pages/BindingsPage";
 import { OrchestrationPage } from "@/features/orchestration/pages/OrchestrationPage";
@@ -11,16 +13,16 @@ import { TransactionsPage } from "@/features/transactions/pages/TransactionsPage
 type TabKey =
   | "servers"
   | "sessions"
-  | "accounts"
   | "bindings"
+  | "accounts"
   | "orchestration"
   | "transactions";
 
 function resolveTab(raw: string | null): TabKey {
   if (
     raw === "sessions" ||
-    raw === "accounts" ||
     raw === "bindings" ||
+    raw === "accounts" ||
     raw === "orchestration" ||
     raw === "transactions"
   ) {
@@ -43,43 +45,52 @@ function App() {
   }, [tab]);
 
   return (
-    <main className="min-h-screen w-full space-y-4 px-4 py-6 lg:px-8">
-      <header className="sticky top-0 z-20 rounded-lg border bg-background/95 px-3 py-2 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant={tab === "servers" ? "default" : "secondary"} onClick={() => setTab("servers")}>
-            Servers
-          </Button>
-          <Button variant={tab === "sessions" ? "default" : "secondary"} onClick={() => setTab("sessions")}>
-            Sessions
-          </Button>
-          <Button variant={tab === "accounts" ? "default" : "secondary"} onClick={() => setTab("accounts")}>
-            Accounts
-          </Button>
-          <Button variant={tab === "bindings" ? "default" : "secondary"} onClick={() => setTab("bindings")}>
-            Bindings
-          </Button>
-          <Button
-            variant={tab === "orchestration" ? "default" : "secondary"}
-            onClick={() => setTab("orchestration")}
-          >
-            Orchestration
-          </Button>
-          <Button
-            variant={tab === "transactions" ? "default" : "secondary"}
-            onClick={() => setTab("transactions")}
-          >
-            Transactions
-          </Button>
-        </div>
-      </header>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error("App Error Boundary:", error, errorInfo);
+        toast.error("An unexpected error occurred", {
+          description: "Please try reloading the page",
+        });
+      }}
+    >
+      <main className="min-h-screen w-full space-y-4 px-4 py-6 lg:px-8">
+        <header className="sticky top-0 z-20 rounded-lg border bg-background/95 px-3 py-2 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant={tab === "servers" ? "default" : "secondary"} onClick={() => setTab("servers")}>
+              Servers
+            </Button>
+            <Button variant={tab === "sessions" ? "default" : "secondary"} onClick={() => setTab("sessions")}>
+              Sessions
+            </Button>
+            <Button variant={tab === "bindings" ? "default" : "secondary"} onClick={() => setTab("bindings")}>
+              Bindings
+            </Button>
+            <Button variant={tab === "accounts" ? "default" : "secondary"} onClick={() => setTab("accounts")}>
+              Accounts
+            </Button>
+            <Button
+              variant={tab === "orchestration" ? "default" : "secondary"}
+              onClick={() => setTab("orchestration")}
+            >
+              Orchestration
+            </Button>
+            <Button
+              variant={tab === "transactions" ? "default" : "secondary"}
+              onClick={() => setTab("transactions")}
+            >
+              Transactions
+            </Button>
+          </div>
+        </header>
 
-      {tab === "servers" ? <ServersPage /> : null}
-      {tab === "sessions" ? <SessionsPage /> : null}
-      {tab === "accounts" ? <AccountsPage /> : null}
-      {tab === "bindings" ? <BindingsPage /> : null}
-      {tab === "orchestration" ? <OrchestrationPage /> : null}
-      {tab === "transactions" ? <TransactionsPage /> : null}
-    </main>
+        {tab === "servers" ? <ServersPage /> : null}
+        {tab === "sessions" ? <SessionsPage /> : null}
+        {tab === "bindings" ? <BindingsPage /> : null}
+        {tab === "accounts" ? <AccountsPage /> : null}
+        {tab === "orchestration" ? <OrchestrationPage /> : null}
+        {tab === "transactions" ? <TransactionsPage /> : null}
+      </main>
+    </ErrorBoundary>
   );
 }
 

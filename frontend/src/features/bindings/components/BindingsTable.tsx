@@ -1,18 +1,7 @@
-import {
-  BadgeCheck,
-  KeyRound,
-  Loader2,
-  LogOut,
-  MoreHorizontal,
-  RefreshCw,
-  ScanSearch,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react";
+import { Loader2, MoreHorizontal, LogOut, RefreshCcw, Settings, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,159 +16,118 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import type { Binding } from "../types";
-
-function badgeVariant(step: Binding["step"]): "default" | "secondary" | "destructive" {
-  if (step === "logged_out") {
-    return "secondary";
-  }
-  if (step === "otp_verification") {
-    return "destructive";
-  }
-  return "default";
-}
-
-function tokenBadge(binding: Binding): { label: string; variant: "default" | "secondary" | "destructive" } {
-  if (!binding.token_location || !binding.token_location_refreshed_at) {
-    return { label: "Empty", variant: "secondary" };
-  }
-  const rawTs = binding.token_location_refreshed_at;
-  const hasTz = /(?:Z|[+\-]\d{2}:\d{2})$/.test(rawTs);
-  const normalizedTs = hasTz ? rawTs : `${rawTs}Z`;
-  const refreshedAtMs = new Date(normalizedTs).getTime();
-  const ageMinutes = (Date.now() - refreshedAtMs) / 60000;
-  if (Number.isNaN(ageMinutes)) {
-    return { label: "Stale", variant: "destructive" };
-  }
-  if (ageMinutes <= 10) {
-    return { label: "Fresh", variant: "default" };
-  }
-  return { label: "Stale", variant: "destructive" };
-}
 
 type BindingsTableProps = {
   bindings: Binding[];
-  selectedBindingIds: number[];
-  allSelected: boolean;
-  isLoading: boolean;
+  isLoadingBindings: boolean;
   pendingRowActions: Record<number, string>;
-  onToggleSelectAll: (checked: boolean) => void;
-  onToggleSelectBinding: (bindingId: number, checked: boolean) => void;
-  onCheckBalance: (bindingId: number) => void;
-  onRefreshTokenLocation: (bindingId: number) => void;
-  onVerifyReseller: (bindingId: number) => void;
-  onOpenRequestLogin: (binding: Binding) => void;
-  onOpenVerify: (binding: Binding) => void;
-  onOpenLogout: (binding: Binding) => void;
-  onDelete: (bindingId: number) => void;
+  onRequestOTP: (bindingId: number) => void;
+  onVerifyOTP: (bindingId: number) => void;
+  onMarkVerified: (bindingId: number) => void;
+  onSetBalance: (bindingId: number) => void;
+  onRelease: (bindingId: number) => void;
 };
 
 export function BindingsTable({
   bindings,
-  selectedBindingIds,
-  allSelected,
-  isLoading,
+  isLoadingBindings,
   pendingRowActions,
-  onToggleSelectAll,
-  onToggleSelectBinding,
-  onCheckBalance,
-  onRefreshTokenLocation,
-  onVerifyReseller,
-  onOpenRequestLogin,
-  onOpenVerify,
-  onOpenLogout,
-  onDelete,
+  onRequestOTP,
+  onVerifyOTP,
+  onMarkVerified,
+  onSetBalance,
+  onRelease,
 }: BindingsTableProps) {
+  const getStepColor = (step: string) => {
+    switch (step) {
+      case "BINDED":
+        return "secondary";
+      case "REQUEST_OTP":
+        return "warning";
+      case "VERIFY_OTP":
+        return "warning";
+      case "VERIFIED":
+        return "default";
+      case "LOGGED_OUT":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
+
   return (
-    <div className="min-h-[420px] overflow-x-auto">
-      <Table className="table-fixed">
+    <div className="min-h-[440px] overflow-x-auto">
+      <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[42px]">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))}
-              />
-            </TableHead>
-            <TableHead className="w-[80px]">ID</TableHead>
-            <TableHead className="w-[220px]">Server</TableHead>
-            <TableHead className="w-[220px]">Account</TableHead>
-            <TableHead className="w-[150px]">Batch</TableHead>
-            <TableHead className="w-[150px]">Step</TableHead>
-            <TableHead className="w-[100px]">Reseller</TableHead>
-            <TableHead className="w-[120px]">Balance</TableHead>
-            <TableHead className="w-[100px]">token_loc</TableHead>
-            <TableHead className="w-[160px]">Device</TableHead>
+            <TableHead className="w-[90px]">ID</TableHead>
+            <TableHead className="w-[90px]">Session</TableHead>
+            <TableHead className="w-[90px]">Server</TableHead>
+            <TableHead className="w-[90px]">Account</TableHead>
+            <TableHead className="w-[120px]">Step</TableHead>
+            <TableHead className="w-[100px]">Balance</TableHead>
+            <TableHead className="w-[90px]">Priority</TableHead>
+            <TableHead className="w-[120px]">Status</TableHead>
+            <TableHead className="w-[190px]">Updated</TableHead>
             <TableHead className="w-[90px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isLoading ? (
+          {isLoadingBindings ? (
             <TableRow>
-              <TableCell colSpan={11} className="text-center text-muted-foreground">
+              <TableCell colSpan={10} className="text-center text-muted-foreground">
                 Loading bindings...
               </TableCell>
             </TableRow>
           ) : bindings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11} className="text-center text-muted-foreground">
-                Belum ada binding.
+              <TableCell colSpan={10} className="text-center text-muted-foreground">
+                Belum ada bindings.
               </TableCell>
             </TableRow>
           ) : (
             bindings.map((binding) => {
               const rowAction = pendingRowActions[binding.id];
-              const isBusy = Boolean(rowAction);
-              const tokenInfo = tokenBadge(binding);
+              const isRowBusy = Boolean(rowAction);
+
               return (
                 <TableRow key={binding.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedBindingIds.includes(binding.id)}
-                      onCheckedChange={(checked) =>
-                        onToggleSelectBinding(binding.id, Boolean(checked))
-                      }
-                    />
-                  </TableCell>
                   <TableCell>#{binding.id}</TableCell>
-                  <TableCell className="truncate text-xs">
-                    {binding.server_base_url ? (
-                      <span className="font-mono">{binding.server_base_url}</span>
+                  <TableCell>#{binding.session_id}</TableCell>
+                  <TableCell>#{binding.server_id}</TableCell>
+                  <TableCell className="font-medium">#{binding.account_id}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStepColor(binding.step)}>{binding.step}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {binding.balance_start ? (
+                      <div className="text-sm">
+                        <span className="font-medium">{binding.balance_start.toLocaleString()}</span>
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({binding.balance_source})
+                        </span>
+                      </div>
                     ) : (
-                      `ID ${binding.server_id}`
+                      <span className="text-muted-foreground text-sm">Not set</span>
                     )}
                   </TableCell>
-                  <TableCell className="truncate text-xs">
-                    {binding.account_msisdn ? (
-                      <span className="font-mono">
-                        {binding.account_msisdn} ({binding.account_batch_id ?? binding.batch_id})
-                      </span>
-                    ) : (
-                      `ID ${binding.account_id}`
-                    )}
-                  </TableCell>
-                  <TableCell className="truncate text-xs">{binding.batch_id}</TableCell>
+                  <TableCell>{binding.priority}</TableCell>
                   <TableCell>
-                    <Badge variant={badgeVariant(binding.step)}>{binding.step}</Badge>
-                  </TableCell>
-                  <TableCell>{binding.is_reseller ? "Yes" : "No"}</TableCell>
-                  <TableCell>
-                    {binding.balance_start ?? "-"} / {binding.balance_last ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={tokenInfo.variant} title={binding.token_location_refreshed_at ?? "-"}>
-                      {tokenInfo.label}
+                    <Badge variant={binding.is_active ? "default" : "secondary"}>
+                      {binding.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="truncate font-mono text-xs">
-                    {binding.device_id ?? binding.server_device_id ?? "-"}
+                  <TableCell className="text-xs">
+                    {binding.last_used_at
+                      ? new Date(binding.last_used_at).toLocaleString()
+                      : "-"}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="outline" disabled={isBusy}>
-                          {isBusy ? (
+                        <Button size="icon" variant="outline" disabled={isRowBusy}>
+                          {isRowBusy ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <MoreHorizontal className="h-4 w-4" />
@@ -187,30 +135,57 @@ export function BindingsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onCheckBalance(binding.id)}>
-                          <BadgeCheck className="mr-2 h-4 w-4" /> Check Balance
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onRefreshTokenLocation(binding.id)}>
-                          <RefreshCw className="mr-2 h-4 w-4" /> Refresh token_loc
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onVerifyReseller(binding.id)}>
-                          <ScanSearch className="mr-2 h-4 w-4" /> Verify Reseller
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onOpenRequestLogin(binding)}>
-                          <KeyRound className="mr-2 h-4 w-4" /> Request Login
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onOpenVerify(binding)}>
-                          <ShieldCheck className="mr-2 h-4 w-4" /> Verify Login
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onOpenLogout(binding)}>
-                          <LogOut className="mr-2 h-4 w-4" /> Logout
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => onDelete(binding.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
+                        {binding.step === "BINDED" && (
+                          <DropdownMenuItem
+                            disabled={isRowBusy}
+                            onClick={() => onRequestOTP(binding.id)}
+                          >
+                            <RefreshCcw className="mr-2 h-4 w-4" />
+                            {rowAction === "request_otp" ? "Requesting..." : "Request OTP"}
+                          </DropdownMenuItem>
+                        )}
+                        {binding.step === "REQUEST_OTP" && (
+                          <DropdownMenuItem
+                            disabled={isRowBusy}
+                            onClick={() => onVerifyOTP(binding.id)}
+                          >
+                            <RefreshCcw className="mr-2 h-4 w-4" />
+                            {rowAction === "verify_otp" ? "Verifying..." : "Verify OTP"}
+                          </DropdownMenuItem>
+                        )}
+                        {binding.step === "VERIFY_OTP" && (
+                          <DropdownMenuItem
+                            disabled={isRowBusy}
+                            onClick={() => onMarkVerified(binding.id)}
+                          >
+                            <Settings className="mr-2 h-4 w-4" />
+                            {rowAction === "mark_verified" ? "Marking..." : "Mark Verified"}
+                          </DropdownMenuItem>
+                        )}
+                        {binding.step === "VERIFIED" && (
+                          <>
+                            <DropdownMenuItem
+                              disabled={isRowBusy}
+                              onClick={() => onSetBalance(binding.id)}
+                            >
+                              <Wallet className="mr-2 h-4 w-4" />
+                              Set Balance
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={isRowBusy}
+                              onClick={() => onRelease(binding.id)}
+                              className="text-destructive"
+                            >
+                              <LogOut className="mr-2 h-4 w-4" />
+                              {rowAction === "release" ? "Releasing..." : "Release"}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {binding.step === "LOGGED_OUT" && (
+                          <DropdownMenuItem disabled className="text-muted-foreground">
+                            Released (no actions)
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

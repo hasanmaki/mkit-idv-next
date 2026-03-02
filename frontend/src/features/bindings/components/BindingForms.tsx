@@ -1,244 +1,343 @@
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import type { Binding } from "../types";
 
-import {
-  BINDING_STEPS,
-  type AccountOption,
-  type AccountStatus,
-  type BindingFilters,
-  type ServerOption,
-} from "../types";
-
-type BindingCreateForm = {
-  server_id: string;
-  account_id: string;
-  balance_start: string;
+type BindAccountFormFieldsProps = {
+  form: {
+    session_id: number;
+    server_id: number;
+    account_id: number;
+    priority: number;
+    description: string;
+    notes: string;
+  };
+  onChange: React.Dispatch<
+    React.SetStateAction<{
+      session_id: number;
+      server_id: number;
+      account_id: number;
+      priority: number;
+      description: string;
+      notes: string;
+    }>
+  >;
+  sessions?: { id: number; name: string }[];
+  servers?: { id: number; name: string }[];
 };
 
-type VerifyForm = {
-  otp: string;
-};
-
-type RequestLoginForm = {
-  pin: string;
-};
-
-type LogoutForm = {
-  account_status: AccountStatus;
-  last_error_code: string;
-  last_error_message: string;
-};
-
-export function BindingCreateFields({
+export function BindAccountFormFields({
   form,
   onChange,
-  serverOptions,
-  accountOptions,
-}: {
-  form: BindingCreateForm;
-  onChange: (next: BindingCreateForm) => void;
-  serverOptions: ServerOption[];
-  accountOptions: AccountOption[];
-}) {
+  sessions = [],
+  servers = [],
+}: BindAccountFormFieldsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <div className="space-y-1.5">
-        <Label>Server ID</Label>
-        <Select
-          value={form.server_id || "none"}
-          onValueChange={(value) =>
-            onChange({ ...form, server_id: value === "none" ? "" : value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Pilih server" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Pilih server</SelectItem>
-            {serverOptions.map((server) => (
-              <SelectItem key={server.id} value={String(server.id)}>
-                {server.id} | {server.base_url}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Account ID</Label>
-        <Select
-          value={form.account_id || "none"}
-          onValueChange={(value) =>
-            onChange({ ...form, account_id: value === "none" ? "" : value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Pilih account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Pilih account</SelectItem>
-            {accountOptions.map((account) => (
-              <SelectItem key={account.id} value={String(account.id)}>
-                {account.id} | {account.msisdn} | {account.batch_id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Balance Start (optional)</Label>
+    <div className="grid gap-4 py-2">
+      <div className="grid gap-2">
+        <Label htmlFor="session_id">Session</Label>
         <Input
+          id="session_id"
           type="number"
-          value={form.balance_start}
-          onChange={(event) => onChange({ ...form, balance_start: event.target.value })}
-        />
-      </div>
-    </div>
-  );
-}
-
-export function BindingFilterFields({
-  filters,
-  onChange,
-}: {
-  filters: BindingFilters;
-  onChange: (next: BindingFilters) => void;
-}) {
-  return (
-    <div className="grid gap-3 md:grid-cols-5">
-      <Input
-        placeholder="Server ID"
-        value={filters.server_id}
-        onChange={(event) => onChange({ ...filters, server_id: event.target.value })}
-      />
-      <Input
-        placeholder="Account ID"
-        value={filters.account_id}
-        onChange={(event) => onChange({ ...filters, account_id: event.target.value })}
-      />
-      <Input
-        placeholder="Batch ID"
-        value={filters.batch_id}
-        onChange={(event) => onChange({ ...filters, batch_id: event.target.value })}
-      />
-      <Select
-        value={filters.step || "all"}
-        onValueChange={(value) =>
-          onChange({ ...filters, step: value === "all" ? "" : (value as BindingFilters["step"]) })
-        }
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Step" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Steps</SelectItem>
-          {BINDING_STEPS.map((step) => (
-            <SelectItem key={step} value={step}>
-              {step}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <div className="flex items-center gap-2 rounded-md border px-3">
-        <Switch
-          checked={filters.active_only}
-          onCheckedChange={(value) => onChange({ ...filters, active_only: value })}
-        />
-        <span className="text-sm">Active only</span>
-      </div>
-    </div>
-  );
-}
-
-export function BindingVerifyFields({
-  form,
-  onChange,
-}: {
-  form: VerifyForm;
-  onChange: (next: VerifyForm) => void;
-}) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-1">
-      <div className="space-y-1.5">
-        <Label>OTP</Label>
-        <Input value={form.otp} onChange={(event) => onChange({ ...form, otp: event.target.value })} />
-      </div>
-    </div>
-  );
-}
-
-export function BindingRequestLoginFields({
-  form,
-  onChange,
-}: {
-  form: RequestLoginForm;
-  onChange: (next: RequestLoginForm) => void;
-}) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-1">
-      <div className="space-y-1.5">
-        <Label>PIN override (optional)</Label>
-        <Input value={form.pin} onChange={(event) => onChange({ ...form, pin: event.target.value })} />
-      </div>
-    </div>
-  );
-}
-
-export function BindingLogoutFields({
-  form,
-  onChange,
-}: {
-  form: LogoutForm;
-  onChange: (next: LogoutForm) => void;
-}) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-1.5 sm:col-span-2">
-        <Label>Account Status</Label>
-        <Select
-          value={form.account_status}
-          onValueChange={(value) =>
-            onChange({ ...form, account_status: value as AccountStatus })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="new">new</SelectItem>
-            <SelectItem value="active">active</SelectItem>
-            <SelectItem value="exhausted">exhausted</SelectItem>
-            <SelectItem value="disabled">disabled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Error code (optional)</Label>
-        <Input
-          value={form.last_error_code}
+          value={form.session_id}
           onChange={(event) =>
-            onChange({ ...form, last_error_code: event.target.value })
+            onChange((prev) => ({ ...prev, session_id: Number(event.target.value) }))
           }
+          placeholder="Session ID"
+        />
+        {sessions.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Available: {sessions.map((s) => s.name).join(", ")}
+          </p>
+        )}
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="server_id">Server</Label>
+        <Input
+          id="server_id"
+          type="number"
+          value={form.server_id}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, server_id: Number(event.target.value) }))
+          }
+          placeholder="Server ID"
+        />
+        {servers.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Available: {servers.map((s) => s.name).join(", ")}
+          </p>
+        )}
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="account_id">Account ID</Label>
+        <Input
+          id="account_id"
+          type="number"
+          value={form.account_id}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, account_id: Number(event.target.value) }))
+          }
+          placeholder="Account ID to bind"
         />
       </div>
-      <div className="space-y-1.5">
-        <Label>Error message (optional)</Label>
+      <div className="grid gap-2">
+        <Label htmlFor="priority">Priority</Label>
         <Input
-          value={form.last_error_message}
+          id="priority"
+          type="number"
+          value={form.priority}
           onChange={(event) =>
-            onChange({ ...form, last_error_message: event.target.value })
+            onChange((prev) => ({ ...prev, priority: Number(event.target.value) }))
           }
+          placeholder="1"
+        />
+        <p className="text-xs text-muted-foreground">Lower = higher priority</p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
+          value={form.description}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, description: event.target.value }))
+          }
+          placeholder="Optional description"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={form.notes}
+          onChange={(event) => onChange((prev) => ({ ...prev, notes: event.target.value }))}
+          rows={3}
+          placeholder="Additional notes"
         />
       </div>
     </div>
   );
 }
 
-export type { BindingCreateForm, LogoutForm, RequestLoginForm, VerifyForm };
+type BulkBindFormFieldsProps = {
+  form: {
+    session_id: number;
+    server_id: number;
+    account_ids: string | number[];
+    priority: number;
+    description: string;
+    notes: string;
+  };
+  onChange: React.Dispatch<
+    React.SetStateAction<{
+      session_id: number;
+      server_id: number;
+      account_ids: string | number[];
+      priority: number;
+      description: string;
+      notes: string;
+    }>
+  >;
+};
+
+export function BulkBindFormFields({ form, onChange }: BulkBindFormFieldsProps) {
+  return (
+    <div className="grid gap-4 py-2">
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-session_id">Session</Label>
+        <Input
+          id="bulk-session_id"
+          type="number"
+          value={form.session_id}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, session_id: Number(event.target.value) }))
+          }
+          placeholder="Session ID"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-server_id">Server</Label>
+        <Input
+          id="bulk-server_id"
+          type="number"
+          value={form.server_id}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, server_id: Number(event.target.value) }))
+          }
+          placeholder="Server ID"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-account_ids">Account IDs (comma-separated)</Label>
+        <Input
+          id="bulk-account_ids"
+          value={typeof form.account_ids === "string" ? form.account_ids : form.account_ids.join(",")}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, account_ids: event.target.value }))
+          }
+          placeholder="100, 101, 102"
+        />
+        <p className="text-xs text-muted-foreground">Example: 100, 101, 102</p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-priority">Priority</Label>
+        <Input
+          id="bulk-priority"
+          type="number"
+          value={form.priority}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, priority: Number(event.target.value) }))
+          }
+          placeholder="1"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-description">Description</Label>
+        <Input
+          id="bulk-description"
+          value={form.description}
+          onChange={(event) =>
+            onChange((prev) => ({ ...prev, description: event.target.value }))
+          }
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="bulk-notes">Notes</Label>
+        <Textarea
+          id="bulk-notes"
+          value={form.notes}
+          onChange={(event) => onChange((prev) => ({ ...prev, notes: event.target.value }))}
+          rows={3}
+        />
+      </div>
+    </div>
+  );
+}
+
+type OTPDialogFieldsProps = {
+  binding: Binding | null;
+  mode: "request" | "verify";
+  pin: string;
+  otp: string;
+  onPinChange: (pin: string) => void;
+  onOTPChange: (otp: string) => void;
+};
+
+export function OTPDialogFields({
+  binding,
+  mode,
+  pin,
+  otp,
+  onPinChange,
+  onOTPChange,
+}: OTPDialogFieldsProps) {
+  if (!binding) return null;
+
+  return (
+    <div className="grid gap-4 py-2">
+      <div className="rounded-md border p-3">
+        <p className="text-sm font-medium">Binding #{binding.id}</p>
+        <p className="text-xs text-muted-foreground">
+          Account {binding.account_id} → Server {binding.server_id}
+        </p>
+        <p className="text-xs text-muted-foreground">Step: {binding.step}</p>
+      </div>
+
+      {mode === "request" ? (
+        <div className="grid gap-2">
+          <Label htmlFor="pin">PIN</Label>
+          <Input
+            id="pin"
+            type="password"
+            value={pin}
+            onChange={(event) => onPinChange(event.target.value)}
+            placeholder="Enter your PIN"
+            maxLength={10}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          <Label htmlFor="otp">OTP Code</Label>
+          <Input
+            id="otp"
+            type="text"
+            value={otp}
+            onChange={(event) => onOTPChange(event.target.value)}
+            placeholder="Enter OTP code"
+            maxLength={10}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type BalanceDialogFieldsProps = {
+  binding: Binding | null;
+  balance: number;
+  source: "MANUAL" | "AUTO_CHECK";
+  onBalanceChange: (balance: number) => void;
+  onSourceChange: (source: "MANUAL" | "AUTO_CHECK") => void;
+};
+
+export function BalanceDialogFields({
+  binding,
+  balance,
+  source,
+  onBalanceChange,
+  onSourceChange,
+}: BalanceDialogFieldsProps) {
+  if (!binding) return null;
+
+  return (
+    <div className="grid gap-4 py-2">
+      <div className="rounded-md border p-3">
+        <p className="text-sm font-medium">Binding #{binding.id}</p>
+        <p className="text-xs text-muted-foreground">
+          Account {binding.account_id} → Server {binding.server_id}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Current Balance: {binding.balance_start ?? "Not set"}
+        </p>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="balance">Balance Start</Label>
+        <Input
+          id="balance"
+          type="number"
+          value={balance}
+          onChange={(event) => onBalanceChange(Number(event.target.value))}
+          placeholder="50000"
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label>Source</Label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={`flex-1 rounded-md border p-2 text-sm ${
+              source === "MANUAL"
+                ? "border-primary bg-primary/10"
+                : "border-muted"
+            }`}
+            onClick={() => onSourceChange("MANUAL")}
+          >
+            Manual Input
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded-md border p-2 text-sm ${
+              source === "AUTO_CHECK"
+                ? "border-primary bg-primary/10"
+                : "border-muted"
+            }`}
+            onClick={() => onSourceChange("AUTO_CHECK")}
+          >
+            Auto Check
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

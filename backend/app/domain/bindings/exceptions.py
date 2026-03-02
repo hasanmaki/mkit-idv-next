@@ -6,17 +6,22 @@ from app.domain.common.exceptions import DomainException
 class BindingDomainException(DomainException):
     """Base exception for binding domain."""
 
+    DEFAULT_STATUS_CODE: int = 400
+    DEFAULT_CODE: str = "binding_domain_error"
+
     def __init__(
         self,
         message: str,
-        error_code: str = "binding_domain_error",
+        error_code: str | None = None,
         context: dict | None = None,
     ):
-        super().__init__(message, error_code, context)
+        super().__init__(message, error_code or self.DEFAULT_CODE, context)
 
 
 class AccountAlreadyBoundError(BindingDomainException):
     """Raised when trying to bind an account that is already bound."""
+
+    DEFAULT_CODE: str = "account_already_bound"
 
     def __init__(
         self,
@@ -31,13 +36,15 @@ class AccountAlreadyBoundError(BindingDomainException):
 
         super().__init__(
             message=msg,
-            error_code="account_already_bound",
             context=context,
         )
 
 
 class BindingNotFoundError(BindingDomainException):
     """Raised when a binding is not found."""
+
+    DEFAULT_STATUS_CODE: int = 404
+    DEFAULT_CODE: str = "binding_not_found"
 
     def __init__(
         self,
@@ -47,7 +54,6 @@ class BindingNotFoundError(BindingDomainException):
         msg = message or f"Binding with ID {binding_id} not found"
         super().__init__(
             message=msg,
-            error_code="binding_not_found",
             context={"binding_id": binding_id},
         )
 
@@ -55,17 +61,21 @@ class BindingNotFoundError(BindingDomainException):
 class BindingValidationError(BindingDomainException):
     """Raised when binding validation fails."""
 
+    DEFAULT_CODE: str = "binding_validation_error"
+
     def __init__(
         self,
         message: str,
-        error_code: str = "binding_validation_error",
+        error_code: str | None = None,
         context: dict | None = None,
     ):
-        super().__init__(message, error_code, context)
+        super().__init__(message, error_code or self.DEFAULT_CODE, context)
 
 
 class InvalidWorkflowTransitionError(BindingDomainException):
     """Raised when an invalid workflow transition is attempted."""
+
+    DEFAULT_CODE: str = "invalid_workflow_transition"
 
     def __init__(
         self,
@@ -84,6 +94,5 @@ class InvalidWorkflowTransitionError(BindingDomainException):
 
         super().__init__(
             message=msg,
-            error_code="invalid_workflow_transition",
             context=context,
         )

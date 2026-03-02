@@ -1,6 +1,16 @@
-import { Plus, RefreshCw, Search, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCw, Users } from "lucide-react";
+import { useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,297 +26,64 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 
 import {
-  BindingCreateFields,
-  BindingFilterFields,
-  BindingLogoutFields,
-  BindingRequestLoginFields,
-  BindingVerifyFields,
-  type BindingCreateForm,
-  type LogoutForm,
-  type RequestLoginForm,
-  type VerifyForm,
+  BalanceDialogFields,
+  BindAccountFormFields,
+  BulkBindFormFields,
+  OTPDialogFields,
 } from "../components/BindingForms";
 import { BindingsTable } from "../components/BindingsTable";
 import { useBindings } from "../hooks/useBindings";
-import type { Binding, BindingBulkItemInput } from "../types";
 
-const defaultCreateForm: BindingCreateForm = {
-  server_id: "",
-  account_id: "",
-  balance_start: "",
-};
-
-const defaultVerifyForm: VerifyForm = {
-  otp: "",
-};
-
-const defaultRequestLoginForm: RequestLoginForm = {
-  pin: "",
-};
-
-const defaultLogoutForm: LogoutForm = {
-  account_status: "exhausted",
-  last_error_code: "",
-  last_error_message: "",
-};
+function StatCard({ title, value }: { title: string; value: string }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardDescription>{title}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-semibold tracking-tight">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function BindingsPage() {
   const vm = useBindings();
-  const totalBalanceLast = useMemo(
-    () =>
-      vm.bindings.reduce(
-        (acc, item) => acc + (typeof item.balance_last === "number" ? item.balance_last : 0),
-        0,
-      ),
-    [vm.bindings],
-  );
-  const totalBalanceStart = useMemo(
-    () =>
-      vm.bindings.reduce(
-        (acc, item) => acc + (typeof item.balance_start === "number" ? item.balance_start : 0),
-        0,
-      ),
-    [vm.bindings],
-  );
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState(defaultCreateForm);
+  const activeBinding = vm.activeBindingId
+    ? vm.bindings.find((b) => b.id === vm.activeBindingId) || null
+    : null;
 
-  const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-  const [verifyForm, setVerifyForm] = useState(defaultVerifyForm);
-  const [verifyTarget, setVerifyTarget] = useState<Binding | null>(null);
+  const [pin, setPin] = useState("");
+  const [otp, setOtp] = useState("");
+  const [balance, setBalance] = useState(0);
+  const [balanceSource, setBalanceSource] = useState<"MANUAL" | "AUTO_CHECK">("MANUAL");
+  const [otpMode, setOtpMode] = useState<"request" | "verify">("request");
 
-  const [isRequestLoginOpen, setIsRequestLoginOpen] = useState(false);
-  const [requestLoginForm, setRequestLoginForm] = useState(defaultRequestLoginForm);
-  const [requestLoginTarget, setRequestLoginTarget] = useState<Binding | null>(null);
-
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const [logoutForm, setLogoutForm] = useState(defaultLogoutForm);
-  const [logoutTarget, setLogoutTarget] = useState<Binding | null>(null);
-  const [isBulkOpen, setIsBulkOpen] = useState(false);
-  const [bulkMode, setBulkMode] = useState<"port_msisdn" | "server_account">(
-    "port_msisdn",
-  );
-  const [bulkRawText, setBulkRawText] = useState("");
-  const [bulkStopOnFirstError, setBulkStopOnFirstError] = useState(false);
-  const [bulkPin, setBulkPin] = useState("");
-  const [otpQueue, setOtpQueue] = useState<Record<number, string>>({});
-  const [isProductsPreviewOpen, setIsProductsPreviewOpen] = useState(false);
-  const [isPreviewPickerOpen, setIsPreviewPickerOpen] = useState(false);
-  const [previewBindingId, setPreviewBindingId] = useState("");
-
-  const resellerBindings = useMemo(
-    () =>
-      vm.bindings.filter(
-        (binding) => binding.is_reseller && binding.unbound_at === null,
-      ),
-    [vm.bindings],
-  );
-
-  useEffect(() => {
-    if (resellerBindings.length === 0) {
-      setPreviewBindingId("");
-      return;
-    }
-    if (!previewBindingId) {
-      setPreviewBindingId(String(resellerBindings[0].id));
-      return;
-    }
-    const stillExists = resellerBindings.some(
-      (binding) => String(binding.id) === previewBindingId,
-    );
-    if (!stillExists) {
-      setPreviewBindingId(String(resellerBindings[0].id));
-    }
-  }, [previewBindingId, resellerBindings]);
-
-  async function onCreateBinding(): Promise<void> {
-    if (!createForm.server_id || !createForm.account_id) {
-      return;
-    }
-    await vm.createBinding({
-      server_id: Number(createForm.server_id),
-      account_id: Number(createForm.account_id),
-      balance_start: createForm.balance_start.trim()
-        ? Number(createForm.balance_start)
-        : null,
-    });
-    setCreateForm(defaultCreateForm);
-    setIsCreateOpen(false);
+  function handleOpenOTP(bindingId: number, mode: "request" | "verify") {
+    setOtpMode(mode);
+    setPin("");
+    setOtp("");
+    vm.openOTPDialog(bindingId);
   }
 
-  function openVerify(binding: Binding): void {
-    setVerifyTarget(binding);
-    setVerifyForm(defaultVerifyForm);
-    setIsVerifyOpen(true);
-  }
-
-  function openRequestLogin(binding: Binding): void {
-    setRequestLoginTarget(binding);
-    setRequestLoginForm(defaultRequestLoginForm);
-    setIsRequestLoginOpen(true);
-  }
-
-  async function onRequestLogin(): Promise<void> {
-    if (!requestLoginTarget) {
-      return;
-    }
-    await vm.requestBindingLogin(requestLoginTarget.id, {
-      pin: requestLoginForm.pin.trim() || null,
-    });
-    setIsRequestLoginOpen(false);
-    setRequestLoginTarget(null);
-  }
-
-  async function onVerifyBinding(): Promise<void> {
-    if (!verifyTarget) {
-      return;
-    }
-    await vm.verifyBinding(verifyTarget.id, {
-      otp: verifyForm.otp,
-    });
-    setIsVerifyOpen(false);
-    setVerifyTarget(null);
-  }
-
-  function openLogout(binding: Binding): void {
-    setLogoutTarget(binding);
-    setLogoutForm(defaultLogoutForm);
-    setIsLogoutOpen(true);
-  }
-
-  async function onLogoutBinding(): Promise<void> {
-    if (!logoutTarget) {
-      return;
-    }
-    await vm.logoutBinding(logoutTarget.id, {
-      account_status: logoutForm.account_status,
-      last_error_code: logoutForm.last_error_code.trim() || null,
-      last_error_message: logoutForm.last_error_message.trim() || null,
-    });
-    setIsLogoutOpen(false);
-    setLogoutTarget(null);
-  }
-
-  function parseBulkLines(): BindingBulkItemInput[] {
-    const lines = bulkRawText
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-    const items: BindingBulkItemInput[] = [];
-    for (const line of lines) {
-      const parts = line
-        .split(/[,\t;]/)
-        .map((part) => part.trim())
-        .filter((part) => part.length > 0);
-      if (bulkMode === "port_msisdn") {
-        items.push({
-          port: Number(parts[0]),
-          msisdn: parts[1],
-          batch_id: parts[2] || undefined,
-        });
-      } else {
-        items.push({
-          server_id: Number(parts[0]),
-          account_id: Number(parts[1]),
-        });
-      }
-    }
-    return items;
-  }
-
-  async function onBulkDryRun(): Promise<void> {
-    await vm.dryRunBulkBindings({
-      items: parseBulkLines(),
-      stop_on_first_error: bulkStopOnFirstError,
-    });
-  }
-
-  async function onBulkCreate(): Promise<void> {
-    await vm.createBulkBindings({
-      items: parseBulkLines(),
-      stop_on_first_error: bulkStopOnFirstError,
-    });
-  }
-
-  async function onBulkRequestLogin(): Promise<void> {
-    await vm.bulkRequestLogin(bulkPin.trim() || null);
-  }
-
-  async function onBulkCheckBalance(): Promise<void> {
-    await vm.bulkCheckBalance();
-  }
-
-  async function onBulkRefreshToken(): Promise<void> {
-    await vm.bulkRefreshTokenLocation();
-  }
-
-  async function onBulkLogout(): Promise<void> {
-    await vm.bulkLogout({
-      account_status: "exhausted",
-      last_error_code: "bulk_logout",
-      last_error_message: "Bulk logout",
-    });
-  }
-
-  async function onBulkDelete(): Promise<void> {
-    await vm.bulkDelete();
-  }
-
-  async function onBulkVerifyReseller(): Promise<void> {
-    await vm.bulkVerifyReseller();
-  }
-
-  async function onPreviewProducts(): Promise<void> {
-    const fallbackId = resellerBindings[0]?.id;
-    const selectedId = Number(previewBindingId || fallbackId || "");
-    if (!Number.isFinite(selectedId) || selectedId <= 0) {
-      return;
-    }
-    await vm.previewProducts([selectedId], true);
-    setIsPreviewPickerOpen(false);
-    setIsProductsPreviewOpen(true);
-  }
-
-  function buildOtpQueueBindings(): Binding[] {
-    return vm.bindings.filter(
-      (binding) =>
-        vm.selectedBindingIds.includes(binding.id) && binding.step === "otp_requested",
-    );
-  }
-
-  async function submitOtpQueue(): Promise<void> {
-    const queue = buildOtpQueueBindings();
-    for (const binding of queue) {
-      const otp = (otpQueue[binding.id] ?? "").trim();
-      if (!otp) {
-        continue;
-      }
-      await vm.verifyBinding(binding.id, { otp });
-    }
-    setOtpQueue({});
+  function handleOpenBalance(bindingId: number) {
+    const binding = vm.bindings.find((b) => b.id === bindingId);
+    setBalance(binding?.balance_start ?? 0);
+    setBalanceSource((binding?.balance_source as "MANUAL" | "AUTO_CHECK") ?? "MANUAL");
+    vm.openBalanceDialog(bindingId);
   }
 
   return (
     <section className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Bindings</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Bindings Management</h1>
         <p className="text-sm text-muted-foreground">
-          Unit kerja account + server, termasuk verify login dan logout.
+          Bind accounts to servers for sessions. Manage OTP workflow and balance tracking.
         </p>
       </header>
 
@@ -317,452 +94,197 @@ export function BindingsPage() {
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2"><CardDescription>Total</CardDescription></CardHeader>
-          <CardContent><p className="text-3xl font-semibold tracking-tight">{vm.bindings.length}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardDescription>Active</CardDescription></CardHeader>
-          <CardContent><p className="text-3xl font-semibold tracking-tight">{vm.activeCount}</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Balance (Last)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-tight">
-              {totalBalanceLast.toLocaleString("id-ID")}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Start: {totalBalanceStart.toLocaleString("id-ID")}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard title="Total Bindings" value={vm.bindings.length.toString()} />
+        <StatCard
+          title="Active"
+          value={vm.bindings.filter((b) => b.is_active).length.toString()}
+        />
+        <StatCard
+          title="Verified"
+          value={vm.bindings.filter((b) => b.step === "VERIFIED").length.toString()}
+        />
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filter</CardTitle>
-          <CardDescription>Filter list binding sebelum eksekusi action.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <BindingFilterFields filters={vm.filters} onChange={vm.setFilters} />
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void vm.applyFilters()}>
-              <Search className="mr-2 h-4 w-4" /> Apply
-            </Button>
-            <Button variant="outline" onClick={() => void vm.resetFilters()}>
-              Reset
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Binding List</CardTitle>
-              <CardDescription>Manage verify, logout, dan delete binding.</CardDescription>
+              <CardTitle>Bindings</CardTitle>
+              <CardDescription>
+                Manage account bindings with workflow tracking.
+              </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => void vm.loadBindings()}>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => vm.loadBindings()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
-              <Button variant="outline" onClick={() => setIsBulkOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" /> Bulk Builder
-              </Button>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Create Binding
-              </Button>
+
+              <Dialog open={vm.isBulkBindDialogOpen} onOpenChange={vm.setIsBulkBindDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Users className="mr-2 h-4 w-4" /> Bulk Bind
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Bulk Bind Accounts</DialogTitle>
+                    <DialogDescription>
+                      Bind multiple accounts to a server at once.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <BulkBindFormFields
+                    form={vm.bulkBindForm}
+                    onChange={vm.setBulkBindForm}
+                  />
+                  <DialogFooter>
+                    <Button onClick={() => vm.bulkBindAccounts()} disabled={vm.isSubmitting}>
+                      Bind All
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={vm.isBindDialogOpen} onOpenChange={vm.setIsBindDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" /> Bind Account
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Bind Account to Server</DialogTitle>
+                    <DialogDescription>
+                      Create a new binding between session, account, and server.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <BindAccountFormFields
+                    form={vm.bindForm}
+                    onChange={vm.setBindForm}
+                  />
+                  <DialogFooter>
+                    <Button onClick={() => vm.bindAccount()} disabled={vm.isSubmitting}>
+                      Bind
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
-            <span className="text-sm font-medium">
-              Selected: {vm.selectedCount}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onBulkCheckBalance()}
-            >
-              Bulk Check Balance
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onBulkRefreshToken()}
-            >
-              Bulk Refresh token_loc
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onBulkVerifyReseller()}
-            >
-              Bulk Verify Reseller
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={resellerBindings.length === 0 || vm.isSubmitting}
-              onClick={() => setIsPreviewPickerOpen(true)}
-            >
-              Preview Products
-            </Button>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="bulk-pin">PIN (opsional)</Label>
-              <input
-                id="bulk-pin"
-                className="h-8 w-36 rounded-md border bg-background px-2 text-sm"
-                value={bulkPin}
-                onChange={(event) => setBulkPin(event.target.value)}
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={vm.selectedCount === 0 || vm.isSubmitting}
-                onClick={() => void onBulkRequestLogin()}
-              >
-                Bulk Request Login
-              </Button>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onBulkLogout()}
-            >
-              Bulk Logout
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={vm.selectedCount === 0 || vm.isSubmitting}
-              onClick={() => void onBulkDelete()}
-            >
-              Bulk Delete
-            </Button>
-          </div>
           <BindingsTable
             bindings={vm.bindings}
-            selectedBindingIds={vm.selectedBindingIds}
-            allSelected={vm.allSelected}
-            isLoading={vm.isLoading}
+            isLoadingBindings={vm.isLoadingBindings}
             pendingRowActions={vm.pendingRowActions}
-            onToggleSelectAll={vm.toggleSelectAll}
-            onToggleSelectBinding={vm.toggleSelectBinding}
-            onCheckBalance={(bindingId) => void vm.checkBalanceBinding(bindingId)}
-            onRefreshTokenLocation={(bindingId) =>
-              void vm.refreshTokenLocationBinding(bindingId)
-            }
-            onVerifyReseller={(bindingId) => void vm.verifyResellerBinding(bindingId)}
-            onOpenRequestLogin={openRequestLogin}
-            onOpenVerify={openVerify}
-            onOpenLogout={openLogout}
-            onDelete={(bindingId) => void vm.deleteBinding(bindingId)}
+            onRequestOTP={(id) => handleOpenOTP(id, "request")}
+            onVerifyOTP={(id) => handleOpenOTP(id, "verify")}
+            onMarkVerified={vm.markVerified}
+            onSetBalance={(id) => handleOpenBalance(id)}
+            onRelease={vm.openReleaseConfirm}
           />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>OTP Queue</CardTitle>
-          <CardDescription>
-            Khusus selected bindings dengan step <code>otp_requested</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {buildOtpQueueBindings().length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Tidak ada selected binding di step otp_requested.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {buildOtpQueueBindings().map((binding) => (
-                <div key={binding.id} className="flex items-center gap-2">
-                  <span className="w-14 text-sm">#{binding.id}</span>
-                  <span className="w-64 truncate font-mono text-xs">
-                    {binding.account_msisdn ?? binding.account_id}
-                  </span>
-                  <input
-                    className="h-8 w-40 rounded-md border bg-background px-2 text-sm"
-                    placeholder="OTP"
-                    value={otpQueue[binding.id] ?? ""}
-                    onChange={(event) =>
-                      setOtpQueue((prev) => ({ ...prev, [binding.id]: event.target.value }))
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-          <Button
-            disabled={buildOtpQueueBindings().length === 0 || vm.isSubmitting}
-            onClick={() => void submitOtpQueue()}
-          >
-            Submit OTP Queue
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
+      {/* OTP Dialog */}
+      <Dialog open={vm.isOTPDialogOpen} onOpenChange={vm.setIsOTPDialogOpen}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Binding</DialogTitle>
-            <DialogDescription>Masukkan pair server_id dan account_id.</DialogDescription>
+            <DialogTitle>
+              {otpMode === "request" ? "Request OTP" : "Verify OTP"}
+            </DialogTitle>
+            <DialogDescription>
+              {otpMode === "request"
+                ? "Request OTP for the binding."
+                : "Enter the OTP code to verify."}
+            </DialogDescription>
           </DialogHeader>
-          <BindingCreateFields
-            form={createForm}
-            onChange={setCreateForm}
-            serverOptions={vm.serverOptions}
-            accountOptions={vm.accountOptions}
+          <OTPDialogFields
+            binding={activeBinding}
+            mode={otpMode}
+            pin={pin}
+            otp={otp}
+            onPinChange={setPin}
+            onOTPChange={setOtp}
           />
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => void onCreateBinding()}
-              disabled={vm.isSubmitting || !createForm.server_id || !createForm.account_id}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isVerifyOpen} onOpenChange={setIsVerifyOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Login</DialogTitle>
-            <DialogDescription>
-              Binding #{verifyTarget?.id} - submit OTP setelah request login.
-            </DialogDescription>
-          </DialogHeader>
-          <BindingVerifyFields form={verifyForm} onChange={setVerifyForm} />
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsVerifyOpen(false)}>Cancel</Button>
-            <Button onClick={() => void onVerifyBinding()}>Submit OTP</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Bulk Bindings</DialogTitle>
-            <DialogDescription>
-              Input multiline CSV: `port,msisdn[,batch_id]` atau `server_id,account_id`.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <Button
-                type="button"
-                variant={bulkMode === "port_msisdn" ? "default" : "secondary"}
-                onClick={() => setBulkMode("port_msisdn")}
-              >
-                Port + MSISDN
-              </Button>
-              <Button
-                type="button"
-                variant={bulkMode === "server_account" ? "default" : "secondary"}
-                onClick={() => setBulkMode("server_account")}
-              >
-                Server ID + Account ID
-              </Button>
-              <div className="ml-auto flex items-center gap-2">
-                <Label htmlFor="bulk-stop-first">Stop on first error</Label>
-                <Switch
-                  id="bulk-stop-first"
-                  checked={bulkStopOnFirstError}
-                  onCheckedChange={setBulkStopOnFirstError}
-                />
-              </div>
-            </div>
-            <Textarea
-              rows={10}
-              value={bulkRawText}
-              onChange={(event) => setBulkRawText(event.target.value)}
-              placeholder={
-                bulkMode === "port_msisdn"
-                  ? "9900,08577096575,batch-a\n9901,08577096576,batch-a"
-                  : "1,100\n2,101"
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => void onBulkDryRun()}>
-              Dry Run
-            </Button>
-            <Button onClick={() => void onBulkCreate()} disabled={vm.isSubmitting}>
-              Save Bulk
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isProductsPreviewOpen} onOpenChange={setIsProductsPreviewOpen}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Products Preview (Reseller Only)</DialogTitle>
-            <DialogDescription>
-              Requested: {vm.productsPreviewResult?.total_requested ?? 0} | OK:{" "}
-              {vm.productsPreviewResult?.total_ok ?? 0} | Skipped:{" "}
-              {vm.productsPreviewResult?.total_skipped ?? 0} | Failed:{" "}
-              {vm.productsPreviewResult?.total_failed ?? 0}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[420px] overflow-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Binding</TableHead>
-                  <TableHead>MSISDN</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Products</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(vm.productsPreviewResult?.items ?? []).map((item) => (
-                  <TableRow key={`preview-${item.binding_id}`}>
-                    <TableCell>#{item.binding_id}</TableCell>
-                    <TableCell className="font-mono text-xs">{item.msisdn}</TableCell>
-                    <TableCell>{item.status}</TableCell>
-                    <TableCell className="text-xs">
-                      {item.products.length > 0
-                        ? item.products
-                            .slice(0, 5)
-                            .map((product) => `${product.id ?? "-"}:${product.name ?? "-"}`)
-                            .join(" | ")
-                        : item.reason ?? "-"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsProductsPreviewOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPreviewPickerOpen} onOpenChange={setIsPreviewPickerOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Preview Products</DialogTitle>
-            <DialogDescription>
-              Pilih 1 binding reseller untuk ambil product list runtime.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="preview-binding-select">Binding reseller</Label>
-            <select
-              id="preview-binding-select"
-              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-              value={previewBindingId}
-              onChange={(event) => setPreviewBindingId(event.target.value)}
-            >
-              <option value="">Pilih binding reseller...</option>
-              {resellerBindings.map((binding) => (
-                <option key={`preview-opt-${binding.id}`} value={binding.id}>
-                  #{binding.id} - {binding.account_msisdn ?? binding.account_id} @{" "}
-                  {binding.server_base_url ?? `server:${binding.server_id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsPreviewPickerOpen(false)}>
+            <Button variant="secondary" onClick={() => vm.setIsOTPDialogOpen(false)}>
               Cancel
             </Button>
             <Button
-              onClick={() => void onPreviewProducts()}
-              disabled={!previewBindingId || vm.isSubmitting}
+              onClick={() => {
+                if (otpMode === "request" && activeBinding) {
+                  vm.requestOTP(activeBinding.id, pin);
+                } else if (activeBinding) {
+                  vm.verifyOTP(activeBinding.id, otp);
+                }
+              }}
+              disabled={vm.isSubmitting || (otpMode === "request" && !pin) || (otpMode === "verify" && !otp)}
             >
-              Get Products
+              {otpMode === "request" ? "Request OTP" : "Verify OTP"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {vm.bulkResult ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Bulk Result</CardTitle>
-            <CardDescription>
-              Requested: {vm.bulkResult.total_requested} | Created:{" "}
-              {vm.bulkResult.total_created} | Failed: {vm.bulkResult.total_failed} | Mode:{" "}
-              {vm.bulkResult.dry_run ? "DRY RUN" : "CREATE"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Server</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Reason</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vm.bulkResult.items.map((item) => (
-                  <TableRow key={`${item.index}-${item.server_id ?? "na"}-${item.account_id ?? "na"}`}>
-                    <TableCell>{item.index + 1}</TableCell>
-                    <TableCell>{item.status}</TableCell>
-                    <TableCell>{item.server_id ?? item.port ?? "-"}</TableCell>
-                    <TableCell>{item.account_id ?? item.msisdn ?? "-"}</TableCell>
-                    <TableCell className="max-w-[420px] truncate">{item.reason ?? "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Dialog open={isRequestLoginOpen} onOpenChange={setIsRequestLoginOpen}>
-        <DialogContent>
+      {/* Balance Dialog */}
+      <Dialog open={vm.isBalanceDialogOpen} onOpenChange={vm.setIsBalanceDialogOpen}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Request Login</DialogTitle>
+            <DialogTitle>Set Balance Start</DialogTitle>
             <DialogDescription>
-              Binding #{requestLoginTarget?.id} - request OTP (PIN optional).
+              Set the starting balance for this binding.
             </DialogDescription>
           </DialogHeader>
-          <BindingRequestLoginFields form={requestLoginForm} onChange={setRequestLoginForm} />
+          <BalanceDialogFields
+            binding={activeBinding}
+            balance={balance}
+            source={balanceSource}
+            onBalanceChange={setBalance}
+            onSourceChange={setBalanceSource}
+          />
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsRequestLoginOpen(false)}>
+            <Button variant="secondary" onClick={() => vm.setIsBalanceDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => void onRequestLogin()}>Request OTP</Button>
+            <Button
+              onClick={() => {
+                if (activeBinding) {
+                  vm.setBalanceStart(activeBinding.id, balance, balanceSource);
+                }
+              }}
+              disabled={vm.isSubmitting}
+            >
+              Save Balance
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Logout Binding</DialogTitle>
-            <DialogDescription>
-              Binding #{logoutTarget?.id} akan di-set ke step logged_out.
-            </DialogDescription>
-          </DialogHeader>
-          <BindingLogoutFields form={logoutForm} onChange={setLogoutForm} />
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsLogoutOpen(false)}>Cancel</Button>
-            <Button onClick={() => void onLogoutBinding()}>Logout</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Release Confirm Dialog */}
+      <AlertDialog open={vm.isReleaseConfirmOpen} onOpenChange={vm.setIsReleaseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release binding?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will logout the binding and free the account for other sessions.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={vm.isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (vm.pendingReleaseBindingId) {
+                  vm.releaseBinding(vm.pendingReleaseBindingId);
+                }
+              }}
+              disabled={vm.isSubmitting}
+            >
+              Release
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

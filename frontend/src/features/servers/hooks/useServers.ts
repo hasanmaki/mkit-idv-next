@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
+import { useApiError } from "@/hooks/useApiError";
 import type {
   Server,
   ServerBulkCreateResult,
@@ -23,8 +24,21 @@ export function useServers() {
   const [servers, setServers] = useState<Server[]>([]);
   const [selectedServerIds, setSelectedServerIds] = useState<number[]>([]);
   const [isLoadingServers, setIsLoadingServers] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
+
+  // Use centralized error handling with dialog mode
+  const {
+    error,
+    isDialogOpen,
+    errorMessage,
+    handleError,
+    clearError,
+    closeDialog,
+  } = useApiError({
+    displayMode: "toast",
+    errorTitle: "Server Operation Failed",
+    errorDescription: "There was an issue with your request. Please review the details below.",
+  });
 
   const [isSingleDialogOpen, setIsSingleDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
@@ -85,15 +99,13 @@ export function useServers() {
   async function loadServers(): Promise<void> {
     try {
       setIsLoadingServers(true);
-      setErrorMessage(null);
       const payload = await apiRequest<Server[]>("/v1/servers", "GET");
       setServers(payload);
       setSelectedServerIds((previous) =>
         previous.filter((id) => payload.some((server) => server.id === id)),
       );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memuat server list.");
+      handleError(error);
     } finally {
       setIsLoadingServers(false);
     }
@@ -114,7 +126,6 @@ export function useServers() {
   async function createSingleServer(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       const normalizedHost = singleForm.host.trim().replace(/\/+$/, "");
       const payload: ServerCreatePayload = {
@@ -137,8 +148,7 @@ export function useServers() {
       upsertServer(created);
       toast.success("Server berhasil dibuat.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal membuat server.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -164,7 +174,6 @@ export function useServers() {
   async function runBulkDryRun(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       const result = await apiRequest<ServerBulkCreateResult>(
         "/v1/servers/bulk/dry-run",
         "POST",
@@ -173,8 +182,7 @@ export function useServers() {
       setBulkResult(result);
       toast.success("Dry run selesai.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Dry run gagal.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,7 +191,6 @@ export function useServers() {
   async function createBulkServers(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       const result = await apiRequest<ServerBulkCreateResult>(
         "/v1/servers/bulk",
         "POST",
@@ -210,8 +217,7 @@ export function useServers() {
         `Bulk selesai. Created ${result.total_created}, skipped ${result.total_skipped}.`,
       );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Bulk create gagal.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +225,6 @@ export function useServers() {
 
   async function toggleServerStatus(server: Server): Promise<void> {
     try {
-      setErrorMessage(null);
       markRowAction(server.id, "toggle");
       const updated = await apiRequest<Server>(`/v1/servers/${server.id}/status`, "PATCH", {
         is_active: !server.is_active,
@@ -227,8 +232,7 @@ export function useServers() {
       upsertServer(updated);
       toast.success(`Server #${server.id} ${updated.is_active ? "activated" : "deactivated"}.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Gagal update status server #${server.id}.`);
+      handleError(error);
     } finally {
       clearRowAction(server.id);
     }
@@ -247,16 +251,14 @@ export function useServers() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(editingServerId, "edit");
       const payload: ServerUpdatePayload = {
-        name: editForm.name || null,
         description: editForm.description || null,
         timeout: editForm.timeout,
         retries: editForm.retries,
         wait_between_retries: editForm.wait_between_retries,
         max_requests_queued: editForm.max_requests_queued,
-        delay_per_hit: editForm.delay_per_hit,
+        // delay_per_hit: editForm.delay_per_hit, // Not in update payload
         is_active: editForm.is_active,
         notes: editForm.notes || null,
       };
@@ -271,8 +273,7 @@ export function useServers() {
       upsertServer(updated);
       toast.success(`Server #${editingServerId} berhasil diupdate.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Gagal update server #${editingServerId}.`);
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       if (editingServerId) {
@@ -297,7 +298,6 @@ export function useServers() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(pendingDeleteServerId, "delete");
       await performDeleteServer(pendingDeleteServerId);
       removeServerFromState(pendingDeleteServerId);
@@ -305,8 +305,7 @@ export function useServers() {
       setPendingDeleteServerId(null);
       toast.success("Server berhasil dihapus.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal menghapus server.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       if (pendingDeleteServerId) {
@@ -322,7 +321,6 @@ export function useServers() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       const failures: string[] = [];
       const deletedIds: number[] = [];
       for (const serverId of selectedServerIds) {
@@ -332,8 +330,8 @@ export function useServers() {
           deletedIds.push(serverId);
         } catch (error) {
           failures.push(
-            error instanceof Error
-              ? `ID ${serverId}: ${error.message}`
+            error instanceof ApiError
+              ? `ID ${serverId}: ${error.getUserMessage()}`
               : `ID ${serverId}: unknown error`,
           );
         } finally {
@@ -345,14 +343,19 @@ export function useServers() {
         removeServerFromState(deletedId);
       }
       if (failures.length > 0) {
-        setErrorMessage(`Sebagian delete gagal. ${failures.join(" | ")}`);
+        handleError(new ApiError({
+          success: false,
+          error: "BulkDeletePartialFailure",
+          error_code: "bulk_delete_partial_failure",
+          message: `Sebagian delete gagal. ${failures.join(" | ")}`,
+          trace_id: "client-side",
+        }, 400), { displayMode: "dialog" });
         toast.warning(`Delete selesai dengan ${failures.length} kegagalan.`);
       } else {
         toast.success(`Berhasil menghapus ${deletedIds.length} server.`);
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Bulk delete gagal.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -362,6 +365,8 @@ export function useServers() {
     servers,
     selectedServerIds,
     isLoadingServers,
+    error,
+    isDialogOpen,
     errorMessage,
     pendingRowActions,
     isSingleDialogOpen,
@@ -398,5 +403,8 @@ export function useServers() {
     openDeleteConfirm,
     confirmDeleteSingle,
     confirmDeleteSelected,
+    handleError,
+    clearError,
+    closeDialog,
   };
 }

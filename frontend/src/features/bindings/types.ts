@@ -1,156 +1,48 @@
-export type BindingStep =
-  | "bound"
-  | "otp_requested"
-  | "otp_verification"
-  | "otp_verified"
-  | "token_login_fetched"
-  | "logged_out";
-
-export type AccountStatus = "new" | "active" | "exhausted" | "disabled";
-
 export type Binding = {
   id: number;
+  session_id: number;
   server_id: number;
   account_id: number;
-  batch_id: string;
-  step: BindingStep;
-  is_reseller: boolean;
-  balance_start: number | null;
-  balance_last: number | null;
-  last_error_code: string | null;
-  last_error_message: string | null;
-  token_login: string | null;
-  token_location: string | null;
-  token_location_refreshed_at: string | null;
+  step: "BINDED" | "REQUEST_OTP" | "VERIFY_OTP" | "VERIFIED" | "LOGGED_OUT";
   device_id: string | null;
-  bound_at: string;
-  unbound_at: string | null;
+  is_active: boolean;
+  priority: number;
+  balance_start: number | null;
+  balance_source: "MANUAL" | "AUTO_CHECK" | null;
+  description: string | null;
+  notes: string | null;
+  last_used_at: string | null;
   created_at: string;
   updated_at: string;
-  server_base_url?: string | null;
-  server_port?: number | null;
-  server_is_active?: boolean | null;
-  server_device_id?: string | null;
-  account_msisdn?: string | null;
-  account_email?: string | null;
-  account_status?: "new" | "active" | "exhausted" | "disabled" | null;
-  account_batch_id?: string | null;
 };
 
-export type ServerOption = {
-  id: number;
-  base_url: string;
-  is_active: boolean;
-  device_id: string | null;
-};
-
-export type AccountOption = {
-  id: number;
-  msisdn: string;
-  batch_id: string;
-  status: "new" | "active" | "exhausted" | "disabled";
-  email: string;
-};
-
-export type BindingCreatePayload = {
+export type BindAccountPayload = {
+  session_id: number;
   server_id: number;
   account_id: number;
-  balance_start?: number | null;
+  priority?: number;
+  description?: string | null;
+  notes?: string | null;
 };
 
-export type BindingVerifyPayload = {
+export type BulkBindPayload = {
+  session_id: number;
+  server_id: number;
+  account_ids: number[];
+  priority?: number;
+  description?: string | null;
+  notes?: string | null;
+};
+
+export type RequestOTPPayload = {
+  pin: string;
+};
+
+export type VerifyOTPPayload = {
   otp: string;
 };
 
-export type BindingRequestLoginPayload = {
-  pin?: string | null;
-};
-
-export type BindingBulkItemInput = {
-  server_id?: number;
-  account_id?: number;
-  port?: number;
-  msisdn?: string;
-  batch_id?: string;
-  balance_start?: number | null;
-};
-
-export type BindingBulkPayload = {
-  items: BindingBulkItemInput[];
-  stop_on_first_error: boolean;
-};
-
-export type BindingBulkItemResult = {
-  index: number;
-  status: "created" | "would_create" | "failed";
-  reason: string | null;
-  server_id: number | null;
-  account_id: number | null;
-  port: number | null;
-  msisdn: string | null;
-  batch_id: string | null;
-  binding: Binding | null;
-};
-
-export type BindingBulkResult = {
-  dry_run: boolean;
-  total_requested: number;
-  total_created: number;
-  total_failed: number;
-  items: BindingBulkItemResult[];
-};
-
-export type BindingPreviewProductItem = {
-  id: number | null;
-  name: string | null;
-  lower_price: number | null;
-};
-
-export type BindingProductsPreviewItem = {
-  binding_id: number;
-  account_id: number;
-  msisdn: string;
-  is_reseller: boolean;
-  status: "ok" | "skipped" | "failed";
-  reason: string | null;
-  products: BindingPreviewProductItem[];
-};
-
-export type BindingProductsPreviewResult = {
-  total_requested: number;
-  total_ok: number;
-  total_skipped: number;
-  total_failed: number;
-  items: BindingProductsPreviewItem[];
-};
-
-export type BindingLogoutPayload = {
-  account_status?: AccountStatus | null;
-  last_error_code?: string | null;
-  last_error_message?: string | null;
-};
-
-export const BINDING_STEPS: BindingStep[] = [
-  "bound",
-  "otp_requested",
-  "otp_verification",
-  "otp_verified",
-  "token_login_fetched",
-  "logged_out",
-];
-
-export type BindingFilters = {
-  server_id: string;
-  account_id: string;
-  batch_id: string;
-  step: BindingStep | "";
-  active_only: boolean;
-};
-
-export const defaultBindingFilters: BindingFilters = {
-  server_id: "",
-  account_id: "",
-  batch_id: "",
-  step: "",
-  active_only: true,
+export type BalanceStartPayload = {
+  balance_start: number;
+  source: "MANUAL" | "AUTO_CHECK";
 };

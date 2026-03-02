@@ -6,17 +6,23 @@ from app.domain.common.exceptions import DomainException
 class SessionDomainException(DomainException):
     """Base exception for session domain."""
 
+    DEFAULT_STATUS_CODE: int = 400
+    DEFAULT_CODE: str = "session_domain_error"
+
     def __init__(
         self,
         message: str,
-        error_code: str = "session_domain_error",
+        error_code: str | None = None,
         context: dict | None = None,
     ):
-        super().__init__(message, error_code, context)
+        super().__init__(message, error_code or self.DEFAULT_CODE, context)
 
 
 class SessionNotFoundError(SessionDomainException):
     """Raised when a session is not found."""
+
+    DEFAULT_STATUS_CODE: int = 404
+    DEFAULT_CODE: str = "session_not_found"
 
     def __init__(
         self,
@@ -26,13 +32,14 @@ class SessionNotFoundError(SessionDomainException):
         msg = message or f"Session with ID {session_id} not found"
         super().__init__(
             message=msg,
-            error_code="session_not_found",
             context={"session_id": session_id},
         )
 
 
 class SessionDuplicateError(SessionDomainException):
     """Raised when creating a session with duplicate email."""
+
+    DEFAULT_CODE: str = "session_duplicate"
 
     def __init__(
         self,
@@ -47,6 +54,5 @@ class SessionDuplicateError(SessionDomainException):
 
         super().__init__(
             message=msg,
-            error_code="session_duplicate",
             context=context,
         )

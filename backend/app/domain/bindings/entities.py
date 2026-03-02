@@ -1,6 +1,7 @@
 """Binding domain entity - rich domain model with business logic."""
 
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import Field
 
@@ -60,7 +61,7 @@ class Binding(Entity):
     _domain_events: list[DomainEvent] = []
 
     # Valid workflow transitions
-    WORKFLOW_TRANSITIONS = {
+    WORKFLOW_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
         "BINDED": {"REQUEST_OTP", "LOGGED_OUT"},
         "REQUEST_OTP": {"VERIFY_OTP", "BINDED", "LOGGED_OUT"},
         "VERIFY_OTP": {"VERIFIED", "REQUEST_OTP", "LOGGED_OUT"},

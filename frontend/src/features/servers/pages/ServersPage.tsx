@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ErrorDialog } from "@/components/error";
 
 import {
   BulkServerFormFields,
@@ -63,12 +64,6 @@ export function ServersPage() {
           Kelola endpoint server IDV per domain dengan mode single dan bulk.
         </p>
       </header>
-
-      {vm.errorMessage ? (
-        <Card className="border-destructive/40 bg-destructive/10">
-          <CardContent className="py-3 text-sm text-destructive">{vm.errorMessage}</CardContent>
-        </Card>
-      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatCard title="Total" value={vm.servers.length.toString()} />
@@ -278,6 +273,19 @@ export function ServersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        error={vm.error}
+        open={vm.isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            vm.closeDialog();
+          }
+        }}
+        title="Server Operation Failed"
+        description="There was an issue processing your request"
+      />
     </section>
   );
 }
