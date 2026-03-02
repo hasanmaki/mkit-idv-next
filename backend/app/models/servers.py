@@ -19,17 +19,29 @@ class Servers(Base, TimestampMixin):
     __tablename__ = "servers"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    
+    # User-friendly identity
+    name: Mapped[str] = mapped_column(
+        String(100), unique=True, nullable=False, index=True
+    )  # e.g., "Server Production 1"
+    
+    # Server connection
     port: Mapped[int] = mapped_column(unique=True, nullable=False)  # e.g., 9900
     base_url: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False
     )  # e.g., "http://localhost:9900"
-    description: Mapped[str] = mapped_column(String(100), nullable=True)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # Connection settings
     timeout: Mapped[int] = mapped_column(default=10, nullable=False)
     retries: Mapped[int] = mapped_column(default=3, nullable=False)
     wait_between_retries: Mapped[int] = mapped_column(default=1, nullable=False)
     max_requests_queued: Mapped[int] = mapped_column(default=5, nullable=False)
+    
+    # Rate limiting / delay settings
+    delay_per_hit: Mapped[int] = mapped_column(
+        default=0, nullable=False
+    )  # Delay in milliseconds between requests
 
     # Status
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
@@ -37,7 +49,7 @@ class Servers(Base, TimestampMixin):
     # Flexible config (e.g., provider type, headers, etc.)
     parameters: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    notes: Mapped[str] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str] = mapped_column(String(500), nullable=True)
 
     def __repr__(self) -> str:
         """Return a short string representation of the Server for debugging."""

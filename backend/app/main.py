@@ -15,6 +15,7 @@ from app.api import (
     route_bindings,
     route_orchestration,
     route_servers,
+    route_sessions,
     route_tools,
     route_transactions,
 )
@@ -103,6 +104,7 @@ app.add_middleware(TraceIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(route_servers.router, tags=["servers"], prefix="/v1/servers")
+app.include_router(route_sessions.router, tags=["sessions"], prefix="/v1/sessions")
 app.include_router(route_accounts.router, tags=["accounts"], prefix="/v1/accounts")
 app.include_router(route_bindings.router, tags=["bindings"], prefix="/v1/bindings")
 app.include_router(
@@ -113,7 +115,6 @@ app.include_router(
 )
 
 # New Tools Router
-
 app.include_router(route_tools.router, tags=["tools"], prefix="/v1/tools")
 
 # Register exception handlers setelah middleware

@@ -118,6 +118,7 @@ export function useServers() {
 
       const normalizedHost = singleForm.host.trim().replace(/\/+$/, "");
       const payload: ServerCreatePayload = {
+        name: singleForm.name.trim(),
         port: singleForm.port,
         base_url: `${normalizedHost}:${singleForm.port}`,
         description: singleForm.description || null,
@@ -125,6 +126,7 @@ export function useServers() {
         retries: singleForm.retries,
         wait_between_retries: singleForm.wait_between_retries,
         max_requests_queued: singleForm.max_requests_queued,
+        delay_per_hit: singleForm.delay_per_hit,
         is_active: singleForm.is_active,
         notes: singleForm.notes || null,
       };
@@ -144,9 +146,17 @@ export function useServers() {
 
   function buildBulkPayload(): ServerBulkPayload {
     return {
-      ...bulkForm,
+      base_name: bulkForm.base_name,
       base_host: bulkForm.base_host.trim().replace(/\/+$/, ""),
+      start_port: bulkForm.start_port,
+      end_port: bulkForm.end_port,
       description: bulkForm.description || null,
+      timeout: bulkForm.timeout,
+      retries: bulkForm.retries,
+      wait_between_retries: bulkForm.wait_between_retries,
+      max_requests_queued: bulkForm.max_requests_queued,
+      delay_per_hit: bulkForm.delay_per_hit,
+      is_active: bulkForm.is_active,
       notes: bulkForm.notes || null,
     };
   }
@@ -240,11 +250,13 @@ export function useServers() {
       setErrorMessage(null);
       markRowAction(editingServerId, "edit");
       const payload: ServerUpdatePayload = {
+        name: editForm.name || null,
         description: editForm.description || null,
         timeout: editForm.timeout,
         retries: editForm.retries,
         wait_between_retries: editForm.wait_between_retries,
         max_requests_queued: editForm.max_requests_queued,
+        delay_per_hit: editForm.delay_per_hit,
         is_active: editForm.is_active,
         notes: editForm.notes || null,
       };

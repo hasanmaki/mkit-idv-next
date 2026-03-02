@@ -1,56 +1,68 @@
-"""Model untuk Bindings antara Accounts (MSISDN) dan Server Instance."""
+"""Model untuk Bindings antara Accounts (MSISDN) dan Server instance."""
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.mixins import Base, TimestampMixin
-from app.models.steps import BindingStep
 
 
 class Bindings(Base, TimestampMixin):
-    """Active MSISDN bound to a server instance."""
+    """Binding antara Session, Account, dan Server.
+    
+    Satu account hanya bisa di-bind sekali di seluruh sistem.
+    Binding merepresentasikan "pakaian yang sedang dicuci di mesin tertentu untuk grup tertentu".
+    """
 
     __tablename__ = "bindings"
+    __table_args__ = (
+        UniqueConstraint('account_id', name='uq_binding_account'),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
+    
+    # Ownership - Session adalah "grup" yang punya binding
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    # Resource bindings
     server_id: Mapped[int] = mapped_column(
-        ForeignKey("servers.id", ondelete="RESTRICT"), nullable=False, index=True
+        ForeignKey("servers.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     account_id: Mapped[int] = mapped_column(
-        ForeignKey("accounts.id", ondelete="RESTRICT"), nullable=False, index=True
-    )
-    batch_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-
-    step: Mapped[BindingStep] = mapped_column(
-        Enum(BindingStep, name="binding_step"),
-        default=BindingStep.BOUND,
+        ForeignKey("accounts.id", ondelete="RESTRICT"),
         nullable=False,
+        index=True,
     )
-
-    is_reseller: Mapped[bool] = mapped_column(default=False, nullable=False)
-    balance_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    balance_last: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    last_error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    token_login: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    token_location: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    token_location_refreshed_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True
-    )
+    
+    # Workflow tracking (simplified)
+    step: Mapped[str] = mapped_column(
+        String(50),
+        default="BINDED",
+        nullable=False,
+        index=True,
+    )  # BINDED, REQUEST_OTP, VERIFY_OTP, VERIFIED, LOGGED_OUT
+    
+    # Device untuk OTP
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-
-    bound_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    unbound_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
-    def __repr__(self) -> str:
-        """Return a short string representation of the Binding for debugging."""
-        return (
-            f"<Binding id={self.id} account_id={self.account_id} "
-            f"server_id={self.server_id} step={self.step}>"
-        )
+    
+    # Control
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    priority: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    
+    # Balance tracking
+    balance_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    balance_source: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )  # 'MANUAL' atau 'AUTO_CHECK'
+    
+    # Metadata
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

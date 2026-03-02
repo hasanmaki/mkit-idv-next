@@ -59,8 +59,9 @@ export function ServersTable({
               <Checkbox checked={allSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} />
             </TableHead>
             <TableHead className="w-[90px]">ID</TableHead>
-            <TableHead className="w-[320px]">Base URL</TableHead>
-            <TableHead>Description</TableHead>
+            <TableHead className="w-[200px]">Name</TableHead>
+            <TableHead className="w-[280px]">Base URL</TableHead>
+            <TableHead>Delay</TableHead>
             <TableHead className="w-[100px]">Timeout</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead className="w-[190px]">Updated</TableHead>
@@ -70,13 +71,13 @@ export function ServersTable({
         <TableBody>
           {isLoadingServers ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={9} className="text-center text-muted-foreground">
                 Loading servers...
               </TableCell>
             </TableRow>
           ) : servers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={9} className="text-center text-muted-foreground">
                 Belum ada server.
               </TableCell>
             </TableRow>
@@ -96,8 +97,19 @@ export function ServersTable({
                     />
                   </TableCell>
                   <TableCell>#{server.id}</TableCell>
-                  <TableCell className="truncate font-mono text-xs">{server.base_url}</TableCell>
-                  <TableCell className="truncate">{server.description ?? "-"}</TableCell>
+                  <TableCell className="truncate font-medium" title={server.name}>
+                    {server.name}
+                  </TableCell>
+                  <TableCell className="truncate font-mono text-xs" title={server.base_url}>
+                    {server.base_url}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {server.delay_per_hit > 0 ? (
+                      <Badge variant="secondary">{server.delay_per_hit}ms</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">No delay</span>
+                    )}
+                  </TableCell>
                   <TableCell>{server.timeout}s</TableCell>
                   <TableCell>
                     <Badge variant={server.is_active ? "default" : "secondary"}>

@@ -10,8 +10,9 @@ type ConfigFieldsProps = {
   retries: number;
   wait_between_retries: number;
   max_requests_queued: number;
+  delay_per_hit: number;
   onChange: (
-    key: "timeout" | "retries" | "wait_between_retries" | "max_requests_queued",
+    key: "timeout" | "retries" | "wait_between_retries" | "max_requests_queued" | "delay_per_hit",
     value: number,
   ) => void;
 };
@@ -21,12 +22,13 @@ function ConfigFields({
   retries,
   wait_between_retries,
   max_requests_queued,
+  delay_per_hit,
   onChange,
 }: ConfigFieldsProps) {
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="timeout">Timeout</Label>
+        <Label htmlFor="timeout">Timeout (seconds)</Label>
         <Input
           id="timeout"
           type="number"
@@ -44,7 +46,7 @@ function ConfigFields({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="wait-between">Wait Between Retries</Label>
+        <Label htmlFor="wait-between">Wait Between Retries (seconds)</Label>
         <Input
           id="wait-between"
           type="number"
@@ -61,6 +63,19 @@ function ConfigFields({
           onChange={(event) => onChange("max_requests_queued", Number(event.target.value))}
         />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="delay-per-hit">Delay Per Hit (ms)</Label>
+        <Input
+          id="delay-per-hit"
+          type="number"
+          value={delay_per_hit}
+          onChange={(event) => onChange("delay_per_hit", Number(event.target.value))}
+          placeholder="0 = no delay"
+        />
+        <p className="text-xs text-muted-foreground">
+          Delay in milliseconds between requests (rate limiting)
+        </p>
+      </div>
     </>
   );
 }
@@ -73,10 +88,20 @@ type SingleServerFormFieldsProps = {
 export function SingleServerFormFields({ form, onChange }: SingleServerFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2 md:grid-cols-2">
-      <div className="space-y-2">
-        <Label htmlFor="single-host">Host</Label>
+      <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="name">Server Name</Label>
         <Input
-          id="single-host"
+          id="name"
+          value={form.name}
+          onChange={(event) => onChange((prev) => ({ ...prev, name: event.target.value }))}
+          placeholder="Server Production 1"
+        />
+        <p className="text-xs text-muted-foreground">User-friendly name (must be unique)</p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="host">Host</Label>
+        <Input
+          id="host"
           value={form.host}
           onChange={(event) => onChange((prev) => ({ ...prev, host: event.target.value }))}
           placeholder="http://10.0.0.3"
@@ -104,6 +129,7 @@ export function SingleServerFormFields({ form, onChange }: SingleServerFormField
         retries={form.retries}
         wait_between_retries={form.wait_between_retries}
         max_requests_queued={form.max_requests_queued}
+        delay_per_hit={form.delay_per_hit}
         onChange={(key, value) => onChange((prev) => ({ ...prev, [key]: value }))}
       />
       <div className="space-y-2 md:col-span-2">
@@ -138,6 +164,18 @@ type BulkServerFormFieldsProps = {
 export function BulkServerFormFields({ form, onChange }: BulkServerFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2 md:grid-cols-2">
+      <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="bulk-base-name">Base Name</Label>
+        <Input
+          id="bulk-base-name"
+          value={form.base_name}
+          onChange={(event) => onChange((prev) => ({ ...prev, base_name: event.target.value }))}
+          placeholder="Server"
+        />
+        <p className="text-xs text-muted-foreground">
+          Servers will be named: "{form.base_name} 9900", "{form.base_name} 9901", etc.
+        </p>
+      </div>
       <div className="space-y-2 md:col-span-2">
         <Label htmlFor="bulk-host">Base Host</Label>
         <Input
@@ -178,6 +216,7 @@ export function BulkServerFormFields({ form, onChange }: BulkServerFormFieldsPro
         retries={form.retries}
         wait_between_retries={form.wait_between_retries}
         max_requests_queued={form.max_requests_queued}
+        delay_per_hit={form.delay_per_hit}
         onChange={(key, value) => onChange((prev) => ({ ...prev, [key]: value }))}
       />
       <div className="space-y-2 md:col-span-2">
@@ -213,10 +252,20 @@ export function EditServerFormFields({ form, onChange }: EditServerFormFieldsPro
   return (
     <div className="grid gap-4 py-2 md:grid-cols-2">
       <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="edit-name">Server Name</Label>
+        <Input
+          id="edit-name"
+          value={form.name}
+          onChange={(event) =>
+            onChange((prev) => (prev ? { ...prev, name: event.target.value } : prev))
+          }
+        />
+      </div>
+      <div className="space-y-2 md:col-span-2">
         <Label htmlFor="edit-description">Description</Label>
         <Input
           id="edit-description"
-          value={form.description}
+          value={form.description ?? ""}
           onChange={(event) =>
             onChange((prev) => (prev ? { ...prev, description: event.target.value } : prev))
           }
@@ -227,6 +276,7 @@ export function EditServerFormFields({ form, onChange }: EditServerFormFieldsPro
         retries={form.retries}
         wait_between_retries={form.wait_between_retries}
         max_requests_queued={form.max_requests_queued}
+        delay_per_hit={form.delay_per_hit}
         onChange={(key, value) => onChange((prev) => (prev ? { ...prev, [key]: value } : prev))}
       />
       <div className="space-y-2 md:col-span-2">
@@ -234,7 +284,7 @@ export function EditServerFormFields({ form, onChange }: EditServerFormFieldsPro
         <Textarea
           id="edit-notes"
           rows={3}
-          value={form.notes}
+          value={form.notes ?? ""}
           onChange={(event) =>
             onChange((prev) => (prev ? { ...prev, notes: event.target.value } : prev))
           }

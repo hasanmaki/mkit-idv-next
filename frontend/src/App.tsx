@@ -5,10 +5,12 @@ import { AccountsPage } from "@/features/accounts/pages/AccountsPage";
 import { BindingsPage } from "@/features/bindings/pages/BindingsPage";
 import { OrchestrationPage } from "@/features/orchestration/pages/OrchestrationPage";
 import { ServersPage } from "@/features/servers/pages/ServersPage";
+import { SessionsPage } from "@/features/sessions/pages/SessionsPage";
 import { TransactionsPage } from "@/features/transactions/pages/TransactionsPage";
 
 type TabKey =
   | "servers"
+  | "sessions"
   | "accounts"
   | "bindings"
   | "orchestration"
@@ -16,6 +18,7 @@ type TabKey =
 
 function resolveTab(raw: string | null): TabKey {
   if (
+    raw === "sessions" ||
     raw === "accounts" ||
     raw === "bindings" ||
     raw === "orchestration" ||
@@ -46,6 +49,9 @@ function App() {
           <Button variant={tab === "servers" ? "default" : "secondary"} onClick={() => setTab("servers")}>
             Servers
           </Button>
+          <Button variant={tab === "sessions" ? "default" : "secondary"} onClick={() => setTab("sessions")}>
+            Sessions
+          </Button>
           <Button variant={tab === "accounts" ? "default" : "secondary"} onClick={() => setTab("accounts")}>
             Accounts
           </Button>
@@ -68,6 +74,7 @@ function App() {
       </header>
 
       {tab === "servers" ? <ServersPage /> : null}
+      {tab === "sessions" ? <SessionsPage /> : null}
       {tab === "accounts" ? <AccountsPage /> : null}
       {tab === "bindings" ? <BindingsPage /> : null}
       {tab === "orchestration" ? <OrchestrationPage /> : null}

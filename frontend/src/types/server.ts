@@ -1,5 +1,6 @@
 export type Server = {
   id: number;
+  name: string;
   port: number;
   base_url: string;
   description: string | null;
@@ -7,6 +8,7 @@ export type Server = {
   retries: number;
   wait_between_retries: number;
   max_requests_queued: number;
+  delay_per_hit: number;
   is_active: boolean;
   notes: string | null;
   device_id: string | null;
@@ -35,6 +37,7 @@ export type ServerBulkCreateResult = {
 };
 
 export type ServerCreatePayload = {
+  name: string;
   port: number;
   base_url: string;
   description: string | null;
@@ -42,11 +45,13 @@ export type ServerCreatePayload = {
   retries: number;
   wait_between_retries: number;
   max_requests_queued: number;
+  delay_per_hit: number;
   is_active: boolean;
   notes: string | null;
 };
 
 export type ServerBulkPayload = {
+  base_name: string;
   base_host: string;
   start_port: number;
   end_port: number;
@@ -55,6 +60,7 @@ export type ServerBulkPayload = {
   retries: number;
   wait_between_retries: number;
   max_requests_queued: number;
+  delay_per_hit: number;
   is_active: boolean;
   notes: string | null;
 };

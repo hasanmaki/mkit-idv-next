@@ -1,0 +1,61 @@
+# Stage 1: Frontend builder - minimal Node image
+FROM node:20-alpine AS frontend-builder
+WORKDIR /build/frontend
+
+# Copy package files only first
+COPY frontend/package*.json ./
+
+# Install dependencies with optimized flags
+RUN npm ci --prefer-offline --no-audit
+
+# Copy source and build
+COPY frontend/ ./
+
+# Build CSS with Tailwind
+RUN npm run build
+
+# Stage 2: Backend runtime - minimal base image
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+WORKDIR /app
+
+# Enable bytecode compilation and optimize Python runtime
+ENV UV_COMPILE_BYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=9914 \
+    UV_LINK_MODE=copy
+
+# Copy dependency files
+COPY backend/pyproject.toml ./
+
+# Generate lock file and install dependencies (--frozen on rebuild)
+RUN uv sync --no-install-project --no-dev
+
+# Copy application source code
+COPY backend/app ./app
+COPY backend/mlog.yaml ./mlog.yaml
+
+# Install the project package (without dev dependencies)
+RUN uv sync --no-dev
+
+# Copy built frontend assets from builder stage
+COPY --from=frontend-builder /build/frontend/dist /app/frontend
+
+# Copy alembic migrations and config
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+USER appuser
+
+# Expose port
+EXPOSE ${PORT}
+
+# Health check for orchestrators
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health')" || exit 1
+
+# Run with uv to activate the virtual environment
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9914"]

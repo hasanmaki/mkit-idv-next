@@ -1,217 +1,290 @@
-"""API routes for bindings management."""
+"""API routes for binding management."""
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.schemas.bindings import (
+    BalanceStartUpdateRequest,
+    BindAccountRequest,
+    BindingResponse,
+    BulkBindRequest,
+    ReleaseBindingRequest,
+    RequestOTPRequest,
+    VerifyOTPRequest,
+)
+from app.application.bindings.commands import (
+    BindAccountCommand,
+    BulkBindAccountsCommand,
+    ReleaseBindingCommand,
+    RequestOTPCommand,
+    SetBalanceStartCommand,
+    VerifyOTPCommand,
+)
+from app.application.bindings.handlers import BindingCommandHandler
+from app.application.bindings.queries import (
+    GetBindingQuery,
+    ListActiveBindingsQuery,
+    ListBindingsBySessionQuery,
+)
+from app.application.bindings.query_handlers import BindingQueryHandler
 from app.database.session import get_db_session
-from app.models.bindings import Bindings
-from app.models.steps import BindingStep
-from app.services.bindings import (
-    BindingBulkRequest,
-    BindingBulkResult,
-    BindingCreate,
-    BindingLogout,
-    BindingProductsPreviewRequest,
-    BindingProductsPreviewResult,
-    BindingRead,
-    BindingRequestLogin,
-    BindingService,
-    BindingUpdate,
-    BindingViewRead,
-    BindingVerifyLogin,
+from app.domain.bindings.exceptions import (
+    AccountAlreadyBoundError,
+    BindingDomainException,
+    BindingNotFoundError,
+    InvalidWorkflowTransitionError,
 )
 
 router = APIRouter()
 
 
+def _get_command_handler(
+    session: AsyncSession = Depends(get_db_session),
+) -> BindingCommandHandler:
+    """Get binding command handler."""
+    return BindingCommandHandler(session)
+
+
+def _get_query_handler(
+    session: AsyncSession = Depends(get_db_session),
+) -> BindingQueryHandler:
+    """Get binding query handler."""
+    return BindingQueryHandler(session)
+
+
 @router.post(
-    "/bulk/dry-run",
-    response_model=BindingBulkResult,
-    status_code=status.HTTP_200_OK,
-)
-async def bulk_dry_run_bindings(
-    payload: BindingBulkRequest,
-    session: AsyncSession = Depends(get_db_session),
-) -> BindingBulkResult:
-    """Dry-run bulk binding creation without database writes."""
-    service = BindingService(session)
-    return await service.bulk_dry_run_bindings(payload)
-
-
-@router.post("/bulk", response_model=BindingBulkResult, status_code=status.HTTP_201_CREATED)
-async def bulk_create_bindings(
-    payload: BindingBulkRequest,
-    session: AsyncSession = Depends(get_db_session),
-) -> BindingBulkResult:
-    """Create bindings in bulk mode."""
-    service = BindingService(session)
-    return await service.bulk_create_bindings(payload)
-
-
-@router.post("/products/preview", response_model=BindingProductsPreviewResult)
-async def preview_products(
-    payload: BindingProductsPreviewRequest,
-    session: AsyncSession = Depends(get_db_session),
-) -> BindingProductsPreviewResult:
-    """Runtime fetch product list for selected bindings."""
-    service = BindingService(session)
-    return await service.preview_products(payload)
-
-
-@router.post("", response_model=BindingRead, status_code=status.HTTP_201_CREATED)
-@router.post(
-    "/",
-    response_model=BindingRead,
+    "",
+    response_model=BindingResponse,
     status_code=status.HTTP_201_CREATED,
-    include_in_schema=False,
+    responses={
+        400: {"description": "Account already bound"},
+    },
 )
-async def create_binding(
-    payload: BindingCreate,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Create a binding between an account and a server."""
-    service = BindingService(session)
-    return await service.create_binding(payload)
+async def bind_account(
+    payload: BindAccountRequest,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> BindingResponse:
+    """Bind a single account to a server for a session.
 
-
-@router.get("", response_model=list[BindingRead])
-@router.get("/", response_model=list[BindingRead], include_in_schema=False)
-async def list_bindings(
-    skip: int = 0,
-    limit: int = 100,
-    server_id: int | None = None,
-    account_id: int | None = None,
-    batch_id: str | None = None,
-    step: BindingStep | None = None,
-    active_only: bool | None = None,
-    session: AsyncSession = Depends(get_db_session),
-) -> list[Bindings]:
-    """List bindings with optional filters and pagination."""
-    service = BindingService(session)
-    return await service.list_bindings(
-        skip=skip,
-        limit=limit,
-        server_id=server_id,
-        account_id=account_id,
-        batch_id=batch_id,
-        step=step,
-        active_only=active_only,
+    - **session_id**: Session that owns this binding
+    - **server_id**: Server to bind to
+    - **account_id**: Account to bind (must not be already bound)
+    - **priority**: Priority for queue management (lower = higher priority)
+    """
+    command = BindAccountCommand(
+        session_id=payload.session_id,
+        server_id=payload.server_id,
+        account_id=payload.account_id,
+        priority=payload.priority,
+        description=payload.description,
+        notes=payload.notes,
     )
 
+    binding = await handler.handle_bind(command)
+    return BindingResponse.model_validate(binding)
 
-@router.get("/view", response_model=list[BindingViewRead])
-async def list_bindings_view(
-    skip: int = 0,
-    limit: int = 100,
-    server_id: int | None = None,
-    account_id: int | None = None,
-    batch_id: str | None = None,
-    step: BindingStep | None = None,
-    active_only: bool | None = None,
-    session: AsyncSession = Depends(get_db_session),
-) -> list[BindingViewRead]:
-    """List bindings with joined server/account display fields."""
-    service = BindingService(session)
-    return await service.list_bindings_view(
-        skip=skip,
-        limit=limit,
-        server_id=server_id,
-        account_id=account_id,
-        batch_id=batch_id,
-        step=step,
-        active_only=active_only,
+
+@router.post(
+    "/bulk",
+    response_model=list[BindingResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_bind_accounts(
+    payload: BulkBindRequest,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> list[BindingResponse]:
+    """Bind multiple accounts to a server for a session.
+
+    All accounts must not be already bound.
+    """
+    command = BulkBindAccountsCommand(
+        session_id=payload.session_id,
+        server_id=payload.server_id,
+        account_ids=payload.account_ids,
+        priority=payload.priority,
+        description=payload.description,
+        notes=payload.notes,
     )
 
+    bindings = await handler.handle_bulk_bind(command)
+    return [BindingResponse.model_validate(b) for b in bindings]
 
-@router.get("/{binding_id}", response_model=BindingRead)
+
+@router.post(
+    "/{binding_id}/request-otp",
+    response_model=BindingResponse,
+)
+async def request_otp(
+    binding_id: int,
+    payload: RequestOTPRequest,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> BindingResponse:
+    """Request OTP for a binding.
+
+    Transitions binding from BINDED → REQUEST_OTP.
+    """
+    command = RequestOTPCommand(binding_id=binding_id, pin=payload.pin)
+    binding = await handler.handle_request_otp(command)
+    return BindingResponse.model_validate(binding)
+
+
+@router.post(
+    "/{binding_id}/verify-otp",
+    response_model=BindingResponse,
+)
+async def verify_otp(
+    binding_id: int,
+    payload: VerifyOTPRequest,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> BindingResponse:
+    """Verify OTP for a binding.
+
+    Transitions binding from REQUEST_OTP → VERIFY_OTP.
+    After this, call mark-verified endpoint when OTP is confirmed successful.
+    """
+    command = VerifyOTPCommand(binding_id=binding_id, otp=payload.otp)
+    binding = await handler.handle_verify_otp(command)
+    return BindingResponse.model_validate(binding)
+
+
+@router.post(
+    "/{binding_id}/mark-verified",
+    response_model=BindingResponse,
+)
+async def mark_verified(
+    binding_id: int,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> BindingResponse:
+    """Mark binding as verified (ready for transactions).
+
+    Transitions binding from VERIFY_OTP → VERIFIED.
+    """
+    binding = await handler.handle_mark_verified(binding_id)
+    return BindingResponse.model_validate(binding)
+
+
+@router.post(
+    "/{binding_id}/release",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def release_binding(
+    binding_id: int,
+    payload: ReleaseBindingRequest = Depends(lambda: ReleaseBindingRequest()),
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> Response:
+    """Release a binding (logout).
+
+    Transitions binding to LOGGED_OUT and sets is_active = false.
+    Account becomes available for other sessions.
+    """
+    command = ReleaseBindingCommand(binding_id=binding_id)
+    await handler.handle_release(command)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{binding_id}/balance",
+    response_model=BindingResponse,
+)
+async def set_balance_start(
+    binding_id: int,
+    payload: BalanceStartUpdateRequest,
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> BindingResponse:
+    """Set balance start for a binding.
+
+    - **balance_start**: Starting balance amount
+    - **source**: 'MANUAL' (user input) or 'AUTO_CHECK' (from IDV provider)
+    """
+    command = SetBalanceStartCommand(
+        binding_id=binding_id,
+        balance_start=payload.balance_start,
+        source=payload.source,
+    )
+    binding = await handler.handle_set_balance(command)
+    return BindingResponse.model_validate(binding)
+
+
+@router.get(
+    "/{binding_id}",
+    response_model=BindingResponse,
+)
 async def get_binding(
     binding_id: int,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
+    handler: BindingQueryHandler = Depends(_get_query_handler),
+) -> BindingResponse:
     """Get a binding by ID."""
-    service = BindingService(session)
-    return await service.get_binding(binding_id)
+    query = GetBindingQuery(binding_id=binding_id)
+    binding = await handler.handle_get(query)
+    return BindingResponse.model_validate(binding)
 
 
-@router.patch("/{binding_id}", response_model=BindingRead)
-async def update_binding(
-    binding_id: int,
-    payload: BindingUpdate,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Update fields of an existing binding and return the updated binding."""
-    service = BindingService(session)
-    return await service.update_binding(binding_id, payload)
+@router.get(
+    "",
+    response_model=list[BindingResponse],
+)
+async def list_bindings(
+    session_id: int | None = None,
+    is_active: bool | None = None,
+    handler: BindingQueryHandler = Depends(_get_query_handler),
+) -> list[BindingResponse]:
+    """List bindings with optional filters.
+
+    - **session_id**: Filter by session ID
+    - **is_active**: Filter by active status
+    """
+    if session_id is not None:
+        query = ListBindingsBySessionQuery(session_id=session_id, is_active=is_active)
+        bindings = await handler.handle_list_by_session(query)
+    elif is_active is not None:
+        query = ListActiveBindingsQuery(is_active=is_active)
+        bindings = await handler.handle_list_active(query)
+    else:
+        # List all
+        query = ListBindingsBySessionQuery(session_id=0)  # Dummy, will be ignored
+        bindings = await handler.handle_list_by_session(query)
+
+    return [BindingResponse.model_validate(b) for b in bindings]
 
 
-@router.post("/{binding_id}/logout", response_model=BindingRead)
-async def logout_binding(
-    binding_id: int,
-    payload: BindingLogout,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Logout/unbind a binding and return the updated binding."""
-    service = BindingService(session)
-    return await service.logout_binding(binding_id, payload)
+@router.get(
+    "/session/{session_id}",
+    response_model=list[BindingResponse],
+)
+async def list_bindings_by_session(
+    session_id: int,
+    is_active: bool | None = None,
+    handler: BindingQueryHandler = Depends(_get_query_handler),
+) -> list[BindingResponse]:
+    """List all bindings for a session."""
+    query = ListBindingsBySessionQuery(session_id=session_id, is_active=is_active)
+    bindings = await handler.handle_list_by_session(query)
+    return [BindingResponse.model_validate(b) for b in bindings]
 
 
-@router.post("/{binding_id}/request-login")
-async def request_login(
-    binding_id: int,
-    payload: BindingRequestLogin,
-    session: AsyncSession = Depends(get_db_session),
-) -> dict:
-    """Request OTP login for a binding."""
-    service = BindingService(session)
-    return await service.request_login(binding_id, payload)
-
-
-@router.post("/{binding_id}/check-balance", response_model=BindingRead)
-async def check_balance(
-    binding_id: int,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Check latest balance for a binding and persist it."""
-    service = BindingService(session)
-    return await service.check_balance(binding_id)
-
-
-@router.post("/{binding_id}/refresh-token-location", response_model=BindingRead)
-async def refresh_token_location(
-    binding_id: int,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Refresh token_location for a binding and persist it."""
-    service = BindingService(session)
-    return await service.refresh_token_location(binding_id)
-
-
-@router.post("/{binding_id}/verify-reseller", response_model=BindingRead)
-async def verify_reseller(
-    binding_id: int,
-    session: AsyncSession = Depends(get_db_session),
-) -> Bindings:
-    """Re-check reseller status and update binding/account flags."""
-    service = BindingService(session)
-    return await service.verify_reseller(binding_id)
-
-
-@router.post("/{binding_id}/verify-login")
-async def verify_login(
-    binding_id: int,
-    payload: BindingVerifyLogin,
-    session: AsyncSession = Depends(get_db_session),
-) -> dict:
-    """Verify login OTP and reseller status for a binding."""
-    service = BindingService(session)
-    return await service.verify_login_and_reseller(binding_id, payload)
-
-
-@router.delete("/{binding_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{binding_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def delete_binding(
     binding_id: int,
-    session: AsyncSession = Depends(get_db_session),
-) -> None:
-    """Delete a binding by ID."""
-    service = BindingService(session)
-    await service.delete_binding(binding_id)
+    handler: BindingCommandHandler = Depends(_get_command_handler),
+) -> Response:
+    """Delete a binding permanently."""
+    # First release if active
+    try:
+        await handler.handle_release(ReleaseBindingCommand(binding_id=binding_id))
+    except BindingNotFoundError:
+        pass  # Already deleted or not found
+
+    # Then delete
+    from app.repos.binding_repo import BindingRepository
+    from app.models.bindings import Bindings
+    from app.database.session import get_db_session
+
+    async for session in get_db_session():
+        repo = BindingRepository(Bindings)
+        await repo.delete(session, binding_id)
+        break
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
