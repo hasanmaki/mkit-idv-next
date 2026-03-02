@@ -1,45 +1,45 @@
-"""API schemas for session endpoints."""
+"""API schemas for order endpoints."""
 
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
 
-class SessionCreateRequest(BaseModel):
-    """Request schema for creating a session."""
+class OrderCreateRequest(BaseModel):
+    """Request schema for creating an order."""
 
     name: str = Field(
         ...,
         min_length=3,
         max_length=100,
-        description="Session name",
-        examples=["Operator 1", "Main Session", "Production"],
+        description="Customer name",
+        examples=["Operator 1", "Main Customer", "Production"],
     )
     email: EmailStr = Field(
         ...,
-        description="Session email (unique identifier)",
+        description="Customer email (unique identifier)",
         examples=["operator@example.com", "admin@company.com"],
     )
     description: str | None = Field(
         None,
         max_length=255,
         description="Optional description",
-        examples=["Main operator session"],
+        examples=["Main customer order"],
     )
     is_active: bool = Field(
         True,
-        description="Whether session is active",
+        description="Whether order is active",
     )
     notes: str | None = Field(
         None,
         max_length=500,
         description="Additional notes",
-        examples=["Primary session for production"],
+        examples=["Primary order for production"],
     )
 
 
-class SessionUpdateRequest(BaseModel):
-    """Request schema for updating a session."""
+class OrderUpdateRequest(BaseModel):
+    """Request schema for updating an order."""
 
     name: str | None = Field(None, min_length=3, max_length=100)
     email: EmailStr | None = None
@@ -48,21 +48,21 @@ class SessionUpdateRequest(BaseModel):
     notes: str | None = Field(None, max_length=500)
 
 
-class SessionStatusUpdateRequest(BaseModel):
-    """Request schema for toggling session status."""
+class OrderStatusUpdateRequest(BaseModel):
+    """Request schema for toggling order status."""
 
     is_active: bool
 
 
-class SessionResponse(BaseModel):
-    """Response schema for session."""
+class OrderResponse(BaseModel):
+    """Response schema for order."""
 
     id: int = Field(..., examples=[1])
     name: str = Field(..., examples=["Operator 1"])
     email: str = Field(..., examples=["operator@example.com"])
-    description: str | None = Field(None, examples=["Main operator session"])
+    description: str | None = Field(None, examples=["Main customer order"])
     is_active: bool = Field(..., examples=[True])
-    notes: str | None = Field(None, examples=["Primary session"])
+    notes: str | None = Field(None, examples=["Primary order"])
     created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
     updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 

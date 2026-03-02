@@ -9,8 +9,8 @@ from app.models.mixins import Base, TimestampMixin
 
 
 class Bindings(Base, TimestampMixin):
-    """Binding antara Session, Account, dan Server.
-    
+    """Binding antara Order, Account, dan Server.
+
     Satu account hanya bisa di-bind sekali di seluruh sistem.
     Binding merepresentasikan "pakaian yang sedang dicuci di mesin tertentu untuk grup tertentu".
     """
@@ -21,10 +21,10 @@ class Bindings(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    
-    # Ownership - Session adalah "grup" yang punya binding
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("sessions.id", ondelete="CASCADE"),
+
+    # Ownership - Order adalah "grup" yang punya binding
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

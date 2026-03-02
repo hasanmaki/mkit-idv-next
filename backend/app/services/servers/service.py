@@ -1,7 +1,5 @@
 """Server service layer - business logic with Pydantic DTOs."""
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.api.schemas.servers import (
     ServerBulkCreateRequest,
     ServerBulkCreateResult,
@@ -14,6 +12,7 @@ from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.servers import Servers
 from app.repos.server_repo import ServerRepository
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger("service.servers")
 

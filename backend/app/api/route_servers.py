@@ -4,8 +4,8 @@ Simple router layer that delegates to service layer.
 """
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_server_service
 from app.api.schemas.servers import (
     ServerBulkCreateRequest,
     ServerBulkCreateResult,
@@ -14,15 +14,9 @@ from app.api.schemas.servers import (
     ServerStatusUpdateRequest,
     ServerUpdateRequest,
 )
-from app.database.session import get_db_session
 from app.services.servers.service import ServerService
 
 router = APIRouter()
-
-
-def _get_server_service(session: AsyncSession = Depends(get_db_session)) -> ServerService:
-    """Get server service instance."""
-    return ServerService(session)
 
 
 @router.post(
@@ -41,7 +35,7 @@ def _get_server_service(session: AsyncSession = Depends(get_db_session)) -> Serv
 )
 async def create_server(
     payload: ServerCreateRequest,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerResponse:
     """Create a new server entry.
 
@@ -59,7 +53,7 @@ async def create_server(
 )
 async def create_servers_bulk(
     payload: ServerBulkCreateRequest,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerBulkCreateResult:
     """Create multiple servers from one host and a port range.
 
@@ -77,7 +71,7 @@ async def create_servers_bulk(
 )
 async def dry_run_servers_bulk(
     payload: ServerBulkCreateRequest,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerBulkCreateResult:
     """Preview bulk server creation without database writes.
 
@@ -99,7 +93,7 @@ async def list_servers(
     skip: int = 0,
     limit: int = 100,
     is_active: bool | None = None,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> list[ServerResponse]:
     """List servers with optional filtering and pagination.
 
@@ -117,7 +111,7 @@ async def list_servers(
 )
 async def get_server(
     server_id: int,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerResponse:
     """Get a server by ID."""
     return await service.get_server(server_id)
@@ -131,7 +125,7 @@ async def get_server(
 async def update_server(
     server_id: int,
     payload: ServerUpdateRequest,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerResponse:
     """Partially update a server.
 
@@ -148,7 +142,7 @@ async def update_server(
 async def toggle_status(
     server_id: int,
     payload: ServerStatusUpdateRequest,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> ServerResponse:
     """Toggle server active status.
 
@@ -164,7 +158,7 @@ async def toggle_status(
 )
 async def delete_server(
     server_id: int,
-    service: ServerService = Depends(_get_server_service),
+    service: ServerService = Depends(get_server_service),
 ) -> Response:
     """Delete a server.
 
