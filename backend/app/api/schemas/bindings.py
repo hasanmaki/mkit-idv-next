@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class BindAccountRequest(BaseModel):
@@ -30,7 +30,9 @@ class BulkBindRequest(BaseModel):
 class RequestOTPRequest(BaseModel):
     """Request schema for requesting OTP."""
 
-    pin: str = Field(..., min_length=4, max_length=10, description="PIN for OTP request")
+    pin: str = Field(
+        ..., min_length=4, max_length=10, description="PIN for OTP request"
+    )
 
 
 class VerifyOTPRequest(BaseModel):
@@ -49,7 +51,9 @@ class BalanceStartUpdateRequest(BaseModel):
     """Request schema for setting balance start."""
 
     balance_start: int = Field(..., ge=0, description="Starting balance")
-    source: str = Field(..., pattern="^(MANUAL|AUTO_CHECK)$", description="Balance source")
+    source: str = Field(
+        ..., pattern="^(MANUAL|AUTO_CHECK)$", description="Balance source"
+    )
 
 
 class BindingResponse(BaseModel):

@@ -17,6 +17,7 @@ from alembic import context
 from app.models.accounts import Accounts
 from app.models.bindings import Bindings
 from app.models.mixins import Base
+from app.models.orders import Orders
 from app.models.servers import Servers
 from app.models.statuses import AccountStatus
 from app.models.steps import BindingStep
@@ -73,6 +74,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():

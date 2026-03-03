@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import {
@@ -28,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ErrorDialog } from "@/components/error/ErrorDialog";
 
 import { CreateOrderFormFields } from "../components/OrderForms";
 import { OrdersTable } from "../components/OrdersTable";
@@ -157,6 +157,13 @@ export function OrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorDialog
+        error={vm.error}
+        open={vm.isDialogOpen}
+        onOpenChange={vm.closeDialog}
+        title="Gagal Memproses Order"
+      />
     </section>
   );
 }

@@ -143,26 +143,19 @@ class BindingService:
         results: list[BindingResponse] = []
 
         for account_id in data.account_ids:
-            try:
-                # Create binding for each account
-                binding = await self.bindings_repo.create(
-                    self.session,
-                    order_id=data.order_id,
-                    server_id=data.server_id,
-                    account_id=account_id,
-                    priority=data.priority,
-                    description=data.description,
-                    notes=data.notes,
-                    step="BINDED",
-                    is_active=True,
-                )
-                results.append(BindingResponse.model_validate(binding))
-            except Exception as e:
-                logger.warning(
-                    f"Failed to bind account {account_id}: {e!s}",
-                    extra={"account_id": account_id},
-                )
-                # Continue with next account
+            # Create binding for each account
+            binding = await self.bindings_repo.create(
+                self.session,
+                order_id=data.order_id,
+                server_id=data.server_id,
+                account_id=account_id,
+                priority=data.priority,
+                description=data.description,
+                notes=data.notes,
+                step="BINDED",
+                is_active=True,
+            )
+            results.append(BindingResponse.model_validate(binding))
 
         logger.info(
             "Bulk binding completed",

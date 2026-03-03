@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.accounts import (
     AccountCreateRequest,
-    AccountCreateInput,
     AccountResponse,
     AccountUpdateRequest,
     BulkAccountCreateRequest,
@@ -35,7 +34,7 @@ class AccountService:
         order = await self.orders_repo.get(self.session, data.order_id)
         if not order:
             raise AppNotFoundError(
-                message=f"Order with ID {data.order_id} not found",
+                message=f"Order dengan ID {data.order_id} tidak ditemukan",
                 error_code="order_not_found",
                 context={"order_id": data.order_id},
             )
@@ -45,10 +44,12 @@ class AccountService:
             self.session, msisdn=data.msisdn, order_id=data.order_id
         )
         if existing:
+            err_ctx = {"msisdn": data.msisdn, "order_id": data.order_id, "existing_id": existing.id}
+            logger.warning("MSISDN already exists for this order", extra=err_ctx)
             raise AppValidationError(
-                message=f"MSISDN '{data.msisdn}' already exists for this order",
+                message=f"Nomor MSISDN '{data.msisdn}' sudah terdaftar dalam Order ini (ID Akun: {existing.id})",
                 error_code="account_msisdn_duplicate",
-                context={"msisdn": data.msisdn, "order_id": data.order_id},
+                context=err_ctx,
             )
 
         # Create account
@@ -83,7 +84,7 @@ class AccountService:
         order = await self.orders_repo.get(self.session, data.order_id)
         if not order:
             raise AppNotFoundError(
-                message=f"Order with ID {data.order_id} not found",
+                message=f"Order dengan ID {data.order_id} tidak ditemukan",
                 error_code="order_not_found",
                 context={"order_id": data.order_id},
             )
@@ -94,7 +95,7 @@ class AccountService:
             msisdn_normalized = acc_data.msisdn.strip()
             if msisdn_normalized in msisdn_set:
                 raise AppValidationError(
-                    message=f"Duplicate MSISDN '{msisdn_normalized}' in batch",
+                    message=f"Daftar mengandung MSISDN ganda: '{msisdn_normalized}'",
                     error_code="account_msisdn_duplicate_in_batch",
                     context={
                         "order_id": data.order_id,
@@ -108,15 +109,16 @@ class AccountService:
         existing_accounts = await self.accounts_repo.get_multi(
             self.session, order_id=data.order_id
         )
-        existing_msisdns = {acc.msisdn for acc in existing_accounts}
+        existing_msisdns = {acc.msisdn: acc.id for acc in existing_accounts}
 
         for idx, acc_data in enumerate(data.accounts):
             msisdn_normalized = acc_data.msisdn.strip()
             if msisdn_normalized in existing_msisdns:
+                existing_id = existing_msisdns[msisdn_normalized]
                 raise AppValidationError(
-                    message=f"MSISDN '{msisdn_normalized}' already exists for this order",
+                    message=f"Nomor MSISDN '{msisdn_normalized}' sudah terdaftar dalam Order ini (ID Akun: {existing_id})",
                     error_code="account_msisdn_duplicate",
-                    context={"order_id": data.order_id, "msisdn": msisdn_normalized},
+                    context={"order_id": data.order_id, "msisdn": msisdn_normalized, "existing_id": existing_id},
                 )
 
         # Create all accounts
@@ -152,7 +154,7 @@ class AccountService:
         account = await self.accounts_repo.get(self.session, account_id)
         if not account:
             raise AppNotFoundError(
-                message=f"Account with ID {account_id} not found",
+                message=f"Akun dengan ID {account_id} tidak ditemukan",
                 error_code="account_not_found",
                 context={"account_id": account_id},
             )
@@ -169,22 +171,22 @@ class AccountService:
         Returns accounts with order_name included.
         """
         from sqlalchemy import select
-        
+
         # Build query with join to get order_name
         stmt = select(Accounts, Orders.name.label('order_name')).join(
             Orders, Accounts.order_id == Orders.id
         )
-        
+
         # Apply filters
         if order_id is not None:
             stmt = stmt.where(Accounts.order_id == order_id)
-        
+
         # Apply pagination
         stmt = stmt.offset(skip).limit(limit)
-        
+
         result = await self.session.execute(stmt)
         rows = result.all()
-        
+
         # Format response
         return [
             {
@@ -203,7 +205,7 @@ class AccountService:
         account = await self.accounts_repo.get(self.session, account_id)
         if not account:
             raise AppNotFoundError(
-                message=f"Account with ID {account_id} not found",
+                message=f"Akun dengan ID {account_id} tidak ditemukan",
                 error_code="account_not_found",
                 context={"account_id": account_id},
             )
@@ -224,7 +226,7 @@ class AccountService:
         account = await self.accounts_repo.get(self.session, account_id)
         if not account:
             raise AppNotFoundError(
-                message=f"Account with ID {account_id} not found",
+                message=f"Akun dengan ID {account_id} tidak ditemukan",
                 error_code="account_not_found",
                 context={"account_id": account_id},
             )

@@ -28,7 +28,7 @@ class Bindings(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    
+
     # Resource bindings
     server_id: Mapped[int] = mapped_column(
         ForeignKey("servers.id", ondelete="RESTRICT"),
@@ -40,7 +40,7 @@ class Bindings(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    
+
     # Workflow tracking (simplified)
     step: Mapped[str] = mapped_column(
         String(50),
@@ -48,20 +48,20 @@ class Bindings(Base, TimestampMixin):
         nullable=False,
         index=True,
     )  # BINDED, REQUEST_OTP, VERIFY_OTP, VERIFIED, LOGGED_OUT
-    
+
     # Device untuk OTP
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    
+
     # Control
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
     priority: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    
+
     # Balance tracking
     balance_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
     balance_source: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )  # 'MANUAL' atau 'AUTO_CHECK'
-    
+
     # Metadata
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)

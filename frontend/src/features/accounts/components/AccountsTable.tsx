@@ -49,21 +49,21 @@ export function AccountsTable({
   onOpenDeleteConfirm,
 }: AccountsTableProps) {
   return (
-    <div className="min-h-[440px] overflow-x-auto">
+    <div className="min-h-110 overflow-x-auto">
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[42px]">
+            <TableHead className="w-10.5">
               <Checkbox checked={allSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} />
             </TableHead>
-            <TableHead className="w-[70px]">ID</TableHead>
-            <TableHead className="w-[120px]">Order</TableHead>
-            <TableHead className="w-[150px]">MSISDN</TableHead>
-            <TableHead className="w-[180px]">Email</TableHead>
-            <TableHead className="w-[100px]">Processed</TableHead>
-            <TableHead className="w-[90px]">Balance</TableHead>
-            <TableHead className="w-[90px]">Active</TableHead>
-            <TableHead className="w-[90px] text-right">Actions</TableHead>
+            <TableHead className="w-17.5">ID</TableHead>
+            <TableHead className="w-30">Order</TableHead>
+            <TableHead className="w-37.5">MSISDN</TableHead>
+            <TableHead className="w-45">Email</TableHead>
+            <TableHead className="w-25">Processed</TableHead>
+            <TableHead className="w-22.5">Balance</TableHead>
+            <TableHead className="w-22.5">Active</TableHead>
+            <TableHead className="w-22.5 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

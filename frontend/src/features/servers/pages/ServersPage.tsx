@@ -283,8 +283,8 @@ export function ServersPage() {
             vm.closeDialog();
           }
         }}
-        title="Server Operation Failed"
-        description="There was an issue processing your request"
+        title="Gagal Memproses Server"
+        description="Terjadi kendala saat melakukan operasi pada server."
       />
     </section>
   );

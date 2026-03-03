@@ -1,10 +1,9 @@
 """Unit tests for Server domain service."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from app.domain.servers.services import ServerDomainService, BulkCreationResult
+import pytest
 from app.domain.servers.exceptions import ServerDuplicateError
+from app.domain.servers.services import BulkCreationResult, ServerDomainService
 
 
 class MockRepository:

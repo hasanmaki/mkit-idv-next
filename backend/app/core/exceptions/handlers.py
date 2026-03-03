@@ -2,12 +2,14 @@
 """Exception handlers for FastAPI application."""
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.exceptions import HTTPException
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger
+from pydantic import ValidationError
 
 from app.core.exceptions.base import AppBaseExceptionError
 from app.core.log_config import trace_id_ctx
@@ -99,6 +101,43 @@ def make_http_exception_handler(logger_):
     return handler
 
 
+from fastapi.encoders import jsonable_encoder
+
+def make_validation_exception_handler(logger_):
+    """Return an exception handler for Pydantic and FastAPI validation errors."""
+
+    async def handler(request: Request, exc: RequestValidationError | ValidationError) -> JSONResponse:
+        trace_id = _extract_trace_id(request)
+        
+        # Extract meaningful errors
+        errors = exc.errors()
+        first_error = errors[0] if errors else {}
+        msg = first_error.get("msg", "Validasi data gagal.")
+        loc = " -> ".join([str(l) for l in first_error.get("loc", [])])
+        
+        full_message = f"Validasi gagal pada {loc}: {msg}" if loc else msg
+        
+        logger_.bind(path=request.url.path, errors=errors).warning(
+            "VALIDATION_ERROR | {type} | {msg} | path={path}",
+            type=exc.__class__.__name__,
+            msg=full_message,
+            path=request.url.path,
+        )
+        
+        payload = jsonable_encoder({
+            "success": False,
+            "error": "ValidationError",
+            "error_code": "validation_error",
+            "message": full_message,
+            "trace_id": trace_id,
+            "context": {"errors": errors},
+            "datetime": datetime.now(UTC).isoformat(),
+        })
+        return _build_response(payload, 422, trace_id)
+
+    return handler
+
+
 def make_unexpected_exception_handler(logger_):
     """Return an exception handler for unexpected Exceptions.
 
@@ -136,8 +175,19 @@ def register_exception_handlers(app: FastAPI, logger_: object | None = None) -> 
     provided, uses module-level `logger` from loguru.
     """
     logger_ = logger_ or logger
+    
+    # 1. Custom Application Exceptions
     app.add_exception_handler(
         AppBaseExceptionError, make_app_base_exception_handler(logger_)
     )
+    
+    # 2. Validation Errors (Pydantic & FastAPI)
+    validation_handler = make_validation_exception_handler(logger_)
+    app.add_exception_handler(RequestValidationError, validation_handler)
+    app.add_exception_handler(ValidationError, validation_handler)
+    
+    # 3. Standard HTTP Exceptions
     app.add_exception_handler(HTTPException, make_http_exception_handler(logger_))
+    
+    # 4. Generic/Unexpected Exceptions
     app.add_exception_handler(Exception, make_unexpected_exception_handler(logger_))

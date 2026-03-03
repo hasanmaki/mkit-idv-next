@@ -1,15 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
+import { useApiError } from "@/hooks/useApiError";
 import type { Order, OrderCreatePayload } from "../types";
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
+
+  // Use centralized error handling
+  const {
+    error,
+    isDialogOpen,
+    errorMessage,
+    handleError,
+    clearError,
+    closeDialog,
+  } = useApiError({
+    displayMode: "toast",
+  });
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -72,15 +84,13 @@ export function useOrders() {
   async function loadOrders(): Promise<void> {
     try {
       setIsLoadingOrders(true);
-      setErrorMessage(null);
       const payload = await apiRequest<Order[]>("/v1/orders", "GET");
       setOrders(payload);
       setSelectedOrderIds((previous) =>
         previous.filter((id) => payload.some((order) => order.id === id)),
       );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memuat order list.");
+      handleError(error);
     } finally {
       setIsLoadingOrders(false);
     }
@@ -101,7 +111,6 @@ export function useOrders() {
   async function createOrder(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       // Parse MSISDNs from comma-separated or newline-separated string
       const msisdnList = createForm.msisdns
@@ -135,8 +144,7 @@ export function useOrders() {
       upsertOrder(created);
       toast.success("Order berhasil dibuat.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal membuat order.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -158,7 +166,6 @@ export function useOrders() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(pendingDeleteOrderId, "delete");
       await performDeleteOrder(pendingDeleteOrderId);
       removeOrderFromState(pendingDeleteOrderId);
@@ -166,8 +173,7 @@ export function useOrders() {
       setPendingDeleteOrderId(null);
       toast.success("Order berhasil dihapus.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal menghapus order.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       if (pendingDeleteOrderId) {
@@ -183,7 +189,6 @@ export function useOrders() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       const failures: string[] = [];
       const deletedIds: number[] = [];
       for (const orderId of selectedOrderIds) {
@@ -193,8 +198,8 @@ export function useOrders() {
           deletedIds.push(orderId);
         } catch (error) {
           failures.push(
-            error instanceof Error
-              ? `ID ${orderId}: ${error.message}`
+            error instanceof ApiError
+              ? `ID ${orderId}: ${error.getUserMessage()}`
               : `ID ${orderId}: unknown error`,
           );
         } finally {
@@ -206,14 +211,19 @@ export function useOrders() {
         removeOrderFromState(deletedId);
       }
       if (failures.length > 0) {
-        setErrorMessage(`Sebagian delete gagal. ${failures.join(" | ")}`);
+        handleError(new ApiError({
+          success: false,
+          error: "BulkDeletePartialFailure",
+          error_code: "bulk_delete_partial_failure",
+          message: `Sebagian delete gagal. ${failures.join(" | ")}`,
+          trace_id: "client-side",
+        }, 400), { displayMode: "dialog" });
         toast.warning(`Delete selesai dengan ${failures.length} kegagalan.`);
       } else {
         toast.success(`Berhasil menghapus ${deletedIds.length} order.`);
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Bulk delete gagal.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -221,7 +231,6 @@ export function useOrders() {
 
   async function toggleOrderStatus(order: Order): Promise<void> {
     try {
-      setErrorMessage(null);
       markRowAction(order.id, "toggle");
       const updated = await apiRequest<Order>(`/v1/orders/${order.id}/status`, "PATCH", {
         is_active: !order.is_active,
@@ -229,8 +238,7 @@ export function useOrders() {
       upsertOrder(updated);
       toast.success(`Order #${order.id} ${updated.is_active ? "activated" : "deactivated"}.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Gagal update status order #${order.id}.`);
+      handleError(error);
     } finally {
       clearRowAction(order.id);
     }
@@ -240,6 +248,8 @@ export function useOrders() {
     orders,
     selectedOrderIds,
     isLoadingOrders,
+    error,
+    isDialogOpen,
     errorMessage,
     pendingRowActions,
     isCreateDialogOpen,
@@ -263,5 +273,8 @@ export function useOrders() {
     confirmDeleteSingle,
     confirmDeleteSelected,
     toggleOrderStatus,
+    handleError,
+    clearError,
+    closeDialog,
   };
 }

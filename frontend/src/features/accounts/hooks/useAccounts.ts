@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
+import { useApiError } from "@/hooks/useApiError";
 import type {
   Account,
   AccountCreatePayload,
@@ -17,8 +18,19 @@ export function useAccounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
+
+  // Use centralized error handling
+  const {
+    error,
+    isDialogOpen,
+    errorMessage,
+    handleError,
+    clearError,
+    closeDialog,
+  } = useApiError({
+    displayMode: "toast",
+  });
 
   const [isSingleDialogOpen, setIsSingleDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
@@ -64,16 +76,15 @@ export function useAccounts() {
       const ordersData = await apiRequest<{ id: number; name: string }[]>("/v1/orders", "GET");
       setOrders(ordersData);
     } catch (error) {
-      console.error("Failed to load orders:", error);
+      handleError(error);
     } finally {
       setIsLoadingOrders(false);
     }
-  }, []);
+  }, [handleError]);
 
   const loadAccounts = useCallback(async (): Promise<void> => {
     try {
       setIsLoadingAccounts(true);
-      setErrorMessage(null);
 
       const params = new URLSearchParams();
       if (filters.order_id) params.set("order_id", filters.order_id.toString());
@@ -85,12 +96,11 @@ export function useAccounts() {
       const payload = await apiRequest<Account[]>(`/v1/accounts?${params.toString()}`, "GET");
       setAccounts(payload);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memuat accounts.");
+      handleError(error);
     } finally {
       setIsLoadingAccounts(false);
     }
-  }, [filters]);
+  }, [filters, handleError]);
 
   useEffect(() => {
     void loadAccounts();
@@ -121,7 +131,6 @@ export function useAccounts() {
   async function createSingleAccount(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       const payload: AccountCreatePayload = {
         order_id: singleForm.order_id,
@@ -135,7 +144,6 @@ export function useAccounts() {
       setSingleForm({
         order_id: 0,
         msisdn: "",
-        batch_id: "",
         email: "",
         pin: "",
         notes: "",
@@ -145,8 +153,7 @@ export function useAccounts() {
       setAccounts((previous) => [created, ...previous]);
       toast.success("Account berhasil dibuat.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal membuat account.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -155,7 +162,6 @@ export function useAccounts() {
   async function createBulkAccounts(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       const msisdns = bulkForm.msisdns_text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
       const payload = {
@@ -178,8 +184,7 @@ export function useAccounts() {
       void loadAccounts();
       toast.success(`${msisdns.length} accounts berhasil dibuat.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal membuat bulk accounts.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -203,7 +208,6 @@ export function useAccounts() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(editingAccountId, "edit");
 
       const payload: AccountUpdatePayload = {
@@ -226,8 +230,7 @@ export function useAccounts() {
       );
       toast.success(`Account #${editingAccountId} berhasil diupdate.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Gagal update account #${editingAccountId}.`);
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       if (editingAccountId) {
@@ -248,7 +251,6 @@ export function useAccounts() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(pendingDeleteAccountId, "delete");
       await apiRequest<void>(`/v1/accounts/${pendingDeleteAccountId}`, "DELETE");
       setAccounts((previous) => previous.filter((a) => a.id !== pendingDeleteAccountId));
@@ -257,8 +259,7 @@ export function useAccounts() {
       setPendingDeleteAccountId(null);
       toast.success("Account berhasil dihapus.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal menghapus account.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       if (pendingDeleteAccountId) {
@@ -272,15 +273,13 @@ export function useAccounts() {
 
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       await apiRequest<void>("/v1/accounts/bulk-delete", "POST", { ids: selectedAccountIds });
       setAccounts((previous) => previous.filter((a) => !selectedAccountIds.includes(a.id)));
       setSelectedAccountIds([]);
       setIsBulkDeleteConfirmOpen(false);
       toast.success(`${selectedCount} accounts berhasil dihapus.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal menghapus selected accounts.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -302,6 +301,8 @@ export function useAccounts() {
     accounts,
     selectedAccountIds,
     isLoadingAccounts,
+    error,
+    isDialogOpen,
     errorMessage,
     pendingRowActions,
     isSingleDialogOpen,
@@ -339,5 +340,8 @@ export function useAccounts() {
     openDeleteConfirm,
     confirmDeleteSingle,
     confirmDeleteSelected,
+    handleError,
+    clearError,
+    closeDialog,
   };
 }

@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ErrorDialog } from "@/components/error/ErrorDialog";
 
 import {
   BulkAccountFormFields,
@@ -79,12 +80,6 @@ export function AccountsPage() {
           Kelola data MSISDN, batch, dan status akun.
         </p>
       </header>
-
-      {vm.errorMessage ? (
-        <Card className="border-destructive/40 bg-destructive/10">
-          <CardContent className="py-3 text-sm text-destructive">{vm.errorMessage}</CardContent>
-        </Card>
-      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatCard title="Total" value={vm.accounts.length.toString()} />
@@ -295,6 +290,13 @@ export function AccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorDialog
+        error={vm.error}
+        open={vm.isDialogOpen}
+        onOpenChange={vm.closeDialog}
+        title="Gagal Memproses Akun"
+      />
     </section>
   );
 }
