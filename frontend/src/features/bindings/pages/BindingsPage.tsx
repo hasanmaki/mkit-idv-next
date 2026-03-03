@@ -134,6 +134,9 @@ export function BindingsPage() {
                   <BulkBindFormFields
                     form={vm.bulkBindForm}
                     onChange={vm.setBulkBindForm}
+                    orders={vm.orders}
+                    servers={vm.servers}
+                    isLoadingOptions={vm.isLoadingOptions}
                   />
                   <DialogFooter>
                     <Button onClick={() => void vm.bulkBindAccounts()} disabled={vm.isSubmitting}>

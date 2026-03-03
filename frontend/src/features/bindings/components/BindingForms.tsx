@@ -230,52 +230,82 @@ type BulkBindFormFieldsProps = {
     notes: string;
   };
   onChange: React.Dispatch<React.SetStateAction<any>>;
+  orders: { id: number; name: string }[];
+  servers: { id: number; name: string; port: number }[];
+  isLoadingOptions: boolean;
 };
 
-export function BulkBindFormFields({ form, onChange }: BulkBindFormFieldsProps) {
+export function BulkBindFormFields({ 
+  form, 
+  onChange,
+  orders = [],
+  servers = [],
+  isLoadingOptions
+}: BulkBindFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2">
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="bulk-order_id">Session ID</Label>
-          <Input
-            id="bulk-order_id"
-            type="number"
-            value={form.order_id}
-            onChange={(event) =>
-              onChange((prev: any) => ({ ...prev, order_id: Number(event.target.value) }))
-            }
-          />
+          <Label>Session / Order</Label>
+          <Select
+            value={form.order_id.toString()}
+            onValueChange={(value) => onChange((prev: any) => ({ ...prev, order_id: Number(value) }))}
+            disabled={isLoadingOptions}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih Session" />
+            </SelectTrigger>
+            <SelectContent>
+              {orders.map((order) => (
+                <SelectItem key={order.id} value={order.id.toString()}>
+                  {order.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="bulk-server_id">Server ID</Label>
-          <Input
-            id="bulk-server_id"
-            type="number"
-            value={form.server_id}
-            onChange={(event) =>
-              onChange((prev: any) => ({ ...prev, server_id: Number(event.target.value) }))
-            }
-          />
+          <Label>Server IDV</Label>
+          <Select
+            value={form.server_id.toString()}
+            onValueChange={(value) => onChange((prev: any) => ({ ...prev, server_id: Number(value) }))}
+            disabled={isLoadingOptions}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih Server" />
+            </SelectTrigger>
+            <SelectContent>
+              {servers.map((server) => (
+                <SelectItem key={server.id} value={server.id.toString()}>
+                  {server.name} (:{server.port})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="bulk-account_ids">List Account ID (pisahkan koma)</Label>
-        <Input
+        <Label htmlFor="bulk-account_ids">List ID Akun (Pisahkan dengan koma)</Label>
+        <Textarea
           id="bulk-account_ids"
-          value={typeof form.account_ids === "string" ? form.account_ids : form.account_ids.join(",")}
+          value={typeof form.account_ids === "string" ? form.account_ids : form.account_ids.join(", ")}
           onChange={(event) =>
             onChange((prev: any) => ({ ...prev, account_ids: event.target.value }))
           }
-          placeholder="Contoh: 101, 102, 103"
+          placeholder="Contoh: 101, 102, 103, 104"
+          rows={4}
+          className="font-mono text-xs"
         />
+        <p className="text-[10px] text-muted-foreground italic">
+          Tips: Anda bisa copy-paste daftar ID langsung dari tabel Accounts.
+        </p>
       </div>
 
-      <div className="flex items-center justify-between rounded-md border p-3">
+      <div className="flex items-center justify-between rounded-md border p-3 bg-muted/20">
         <div className="space-y-0.5">
           <Label>Set sebagai Reseller</Label>
-          <p className="text-[10px] text-muted-foreground">Terapkan ke semua akun dalam batch ini.</p>
+          <p className="text-[10px] text-muted-foreground">Terapkan mode Reseller ke semua akun di atas.</p>
         </div>
         <Switch
           checked={form.is_reseller}
@@ -283,16 +313,29 @@ export function BulkBindFormFields({ form, onChange }: BulkBindFormFieldsProps) 
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="bulk-priority">Default Priority</Label>
-        <Input
-          id="bulk-priority"
-          type="number"
-          value={form.priority}
-          onChange={(event) =>
-            onChange((prev: any) => ({ ...prev, priority: Number(event.target.value) }))
-          }
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="bulk-priority">Priority</Label>
+          <Input
+            id="bulk-priority"
+            type="number"
+            value={form.priority}
+            onChange={(event) =>
+              onChange((prev: any) => ({ ...prev, priority: Number(event.target.value) }))
+            }
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="bulk-desc">Keterangan Singkat</Label>
+          <Input
+            id="bulk-desc"
+            value={form.description}
+            onChange={(event) =>
+              onChange((prev: any) => ({ ...prev, description: event.target.value }))
+            }
+            placeholder="Optional"
+          />
+        </div>
       </div>
     </div>
   );
