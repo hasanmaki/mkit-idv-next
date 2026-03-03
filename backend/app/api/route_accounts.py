@@ -10,6 +10,7 @@ from app.api.schemas.accounts import (
     AccountCreateRequest,
     AccountResponse,
     AccountUpdateRequest,
+    BulkAccountCreateRequest,
 )
 from app.services.accounts.service import AccountService
 
@@ -29,6 +30,26 @@ async def create_account(
     return await service.create_account(payload)
 
 
+@router.post(
+    "/bulk",
+    response_model=list[AccountResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_create_accounts(
+    payload: BulkAccountCreateRequest,
+    service: AccountService = Depends(get_account_service),
+) -> list[AccountResponse]:
+    """Create multiple accounts for an order at once.
+    
+    - **order_id**: Order ID these accounts belong to (must exist)
+    - **accounts**: List of accounts to create with msisdn, email, pin (optional), is_reseller
+    
+    All accounts are created in a single transaction. If any validation fails,
+    no accounts will be created.
+    """
+    return await service.bulk_create_accounts(payload)
+
+
 @router.get(
     "",
     response_model=list[AccountResponse],
@@ -40,7 +61,8 @@ async def list_accounts(
     service: AccountService = Depends(get_account_service),
 ) -> list[AccountResponse]:
     """List accounts with optional order filter."""
-    return await service.list_accounts(order_id=order_id, skip=skip, limit=limit)
+    accounts_data = await service.list_accounts(order_id=order_id, skip=skip, limit=limit)
+    return [AccountResponse(**account_data) for account_data in accounts_data]
 
 
 @router.get(

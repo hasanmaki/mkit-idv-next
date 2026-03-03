@@ -69,7 +69,8 @@ async def list_orders(
     - **limit**: Maximum records to return (max 100)
     - **is_active**: Filter by active status (optional)
     """
-    return await service.list_orders(skip=skip, limit=limit, is_active=is_active)
+    orders_data = await service.list_orders(skip=skip, limit=limit, is_active=is_active)
+    return [OrderResponse(**order_data) for order_data in orders_data]
 
 
 @router.get(

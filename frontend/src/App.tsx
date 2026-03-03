@@ -62,11 +62,11 @@ function App() {
             <Button variant={tab === "orders" ? "default" : "secondary"} onClick={() => setTab("orders")}>
               Orders
             </Button>
-            <Button variant={tab === "bindings" ? "default" : "secondary"} onClick={() => setTab("bindings")}>
-              Bindings
-            </Button>
             <Button variant={tab === "accounts" ? "default" : "secondary"} onClick={() => setTab("accounts")}>
               Accounts
+            </Button>
+            <Button variant={tab === "bindings" ? "default" : "secondary"} onClick={() => setTab("bindings")}>
+              Bindings
             </Button>
             <Button
               variant={tab === "orchestration" ? "default" : "secondary"}
@@ -85,8 +85,8 @@ function App() {
 
         {tab === "servers" ? <ServersPage /> : null}
         {tab === "orders" ? <OrdersPage /> : null}
-        {tab === "bindings" ? <BindingsPage /> : null}
         {tab === "accounts" ? <AccountsPage /> : null}
+        {tab === "bindings" ? <BindingsPage /> : null}
         {tab === "orchestration" ? <OrchestrationPage /> : null}
         {tab === "transactions" ? <TransactionsPage /> : null}
       </main>

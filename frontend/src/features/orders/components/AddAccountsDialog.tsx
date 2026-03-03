@@ -47,7 +47,7 @@ export function AddAccountsDialog({
     if (!orderId) return;
 
     const msisdnList = parseMsisdns(form.msisdns);
-    
+
     if (msisdnList.length === 0) {
       toast.error("Please enter at least one MSISDN");
       return;
@@ -56,29 +56,24 @@ export function AddAccountsDialog({
     try {
       setIsSubmitting(true);
 
-      // Create accounts in parallel
-      const promises = msisdnList.map((msisdn) =>
-        apiRequest("/v1/accounts", "POST", {
-          order_id: orderId,
+      // Use bulk create endpoint
+      const payload = {
+        order_id: orderId,
+        accounts: msisdnList.map((msisdn) => ({
           msisdn: msisdn.trim(),
           email: form.email.trim(),
           pin: form.pin || undefined,
-        })
-      );
+          is_reseller: false,
+        })),
+      };
 
-      const results = await Promise.allSettled(promises);
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
-      const failCount = results.filter(r => r.status === 'rejected').length;
+      const result = await apiRequest("/v1/accounts/bulk", "POST", payload);
 
       setForm({ msisdns: "", email: "", pin: "" });
       onOpenChange(false);
       onSuccess();
 
-      if (failCount === 0) {
-        toast.success(`${successCount} account(s) berhasil ditambahkan.`);
-      } else {
-        toast.success(`${successCount} account(s) added, ${failCount} failed`);
-      }
+      toast.success(`${result.length} account(s) berhasil ditambahkan.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal menambahkan accounts.");
     } finally {

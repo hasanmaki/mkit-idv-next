@@ -29,8 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { AddAccountsDialog } from "../components/AddAccountsDialog";
-import { CreateOrderFormFields, EditOrderFormFields } from "../components/OrderForms";
+import { CreateOrderFormFields } from "../components/OrderForms";
 import { OrdersTable } from "../components/OrdersTable";
 import { useOrders } from "../hooks/useOrders";
 
@@ -49,23 +48,6 @@ function StatCard({ title, value }: { title: string; value: string }) {
 
 export function OrdersPage() {
   const vm = useOrders();
-  const [isAddAccountsDialogOpen, setIsAddAccountsDialogOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-
-  const handleAddAccount = (orderId: number) => {
-    setSelectedOrderId(orderId);
-    setIsAddAccountsDialogOpen(true);
-  };
-
-  const handleNavigateToAccounts = (orderId: number) => {
-    // Navigate to Accounts page with order filter
-    window.location.href = `/?tab=accounts&order_id=${orderId}`;
-  };
-
-  const handleAccountAdded = () => {
-    // Refresh orders to update account count
-    void vm.loadOrders();
-  };
 
   return (
     <section className="space-y-6">
@@ -136,32 +118,11 @@ export function OrdersPage() {
             pendingRowActions={vm.pendingRowActions}
             onToggleSelectAll={vm.toggleSelectAll}
             onToggleSelectOrder={vm.toggleSelectOrder}
-            onOpenEditOrder={vm.openEditOrder}
             onToggleOrderStatus={vm.toggleOrderStatus}
             onOpenDeleteConfirm={vm.openDeleteConfirm}
-            onAddAccount={handleAddAccount}
-            onNavigateToAccounts={handleNavigateToAccounts}
           />
         </CardContent>
       </Card>
-
-      <Dialog open={vm.isEditDialogOpen} onOpenChange={vm.setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Order</DialogTitle>
-            <DialogDescription>Update informasi order customer.</DialogDescription>
-          </DialogHeader>
-          {vm.editForm && <EditOrderFormFields form={vm.editForm} onChange={vm.setEditForm} />}
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => vm.setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void vm.saveEditOrder()} disabled={vm.isSubmitting}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={vm.isDeleteConfirmOpen} onOpenChange={vm.setIsDeleteConfirmOpen}>
         <AlertDialogContent>
@@ -196,14 +157,6 @@ export function OrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Add Accounts Dialog */}
-      <AddAccountsDialog
-        open={isAddAccountsDialogOpen}
-        onOpenChange={setIsAddAccountsDialogOpen}
-        orderId={selectedOrderId}
-        onSuccess={handleAccountAdded}
-      />
     </section>
   );
 }

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.schemas.orders import (
     OrderCreateRequest,
     OrderResponse,
+    OrderStatusUpdateRequest,
     OrderUpdateRequest,
 )
 from app.core.exceptions import AppNotFoundError, AppValidationError
@@ -179,3 +180,30 @@ class OrderService:
         await self.repo.delete(self.session, order_id)
 
         logger.info("Order deleted", extra={"order_id": order_id})
+
+    async def toggle_order_status(
+        self,
+        order_id: int,
+        is_active: bool,
+    ) -> OrderResponse:
+        """Toggle order active status."""
+        order = await self.repo.get(self.session, order_id)
+        if not order:
+            raise AppNotFoundError(
+                message=f"Order with ID {order_id} not found",
+                error_code="order_not_found",
+                context={"order_id": order_id},
+            )
+
+        # Update order
+        updated_order = await self.repo.update(
+            self.session,
+            order,
+            is_active=is_active,
+        )
+
+        logger.info(
+            "Order status toggled",
+            extra={"order_id": order_id, "is_active": is_active},
+        )
+        return OrderResponse.model_validate(updated_order)

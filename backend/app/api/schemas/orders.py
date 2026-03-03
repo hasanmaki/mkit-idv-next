@@ -76,6 +76,7 @@ class OrderResponse(BaseModel):
     description: str | None = Field(None, examples=["Main customer order"])
     is_active: bool = Field(..., examples=[True])
     notes: str | None = Field(None, examples=["Primary order"])
+    account_count: int = Field(0, examples=[5], description="Number of accounts in this order")
     created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])
     updated_at: datetime = Field(..., examples=["2026-02-10T19:30:00.000Z"])
 

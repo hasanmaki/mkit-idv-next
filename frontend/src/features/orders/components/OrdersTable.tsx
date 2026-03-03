@@ -1,4 +1,4 @@
-import { Loader2, MoreHorizontal, PenSquare, ServerCog, Trash2, Users, UserPlus, Eye } from "lucide-react";
+import { Loader2, MoreHorizontal, ServerCog, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,8 @@ type OrdersTableProps = {
   pendingRowActions: Record<number, string>;
   onToggleSelectAll: (checked: boolean) => void;
   onToggleSelectOrder: (orderId: number, checked: boolean) => void;
-  onOpenEditOrder: (order: Order) => void;
   onToggleOrderStatus: (order: Order) => Promise<void>;
   onOpenDeleteConfirm: (orderId: number) => void;
-  onAddAccount: (orderId: number) => void;
-  onNavigateToAccounts: (orderId: number) => void;
 };
 
 export function OrdersTable({
@@ -42,11 +39,8 @@ export function OrdersTable({
   pendingRowActions,
   onToggleSelectAll,
   onToggleSelectOrder,
-  onOpenEditOrder,
   onToggleOrderStatus,
   onOpenDeleteConfirm,
-  onAddAccount,
-  onNavigateToAccounts,
 }: OrdersTableProps) {
   return (
     <div className="min-h-[440px] overflow-x-auto">
@@ -100,17 +94,7 @@ export function OrdersTable({
                   <TableCell className="font-mono text-xs">#{order.id}</TableCell>
                   <TableCell className="font-medium">{order.name}</TableCell>
                   <TableCell className="text-sm">{order.email}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <Badge variant={order.account_count > 0 ? "outline" : "destructive"}>
-                        {order.account_count} {order.account_count === 1 ? 'account' : 'accounts'}
-                      </Badge>
-                      {order.account_count === 0 && (
-                        <span className="text-xs text-destructive">⚠️ No accounts</span>
-                      )}
-                    </div>
-                  </TableCell>
+                  <TableCell className="text-center font-medium">{order.account_count}</TableCell>
                   <TableCell>
                     <Badge variant={order.is_active ? "default" : "secondary"}>
                       {order.is_active ? "Active" : "Inactive"}
@@ -124,18 +108,6 @@ export function OrdersTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onNavigateToAccounts(order.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Accounts ({order.account_count})
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onAddAccount(order.id)}>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Add Account
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onOpenEditOrder(order)}>
-                          <PenSquare className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onToggleOrderStatus(order)}>
                           <ServerCog className="mr-2 h-4 w-4" />
                           Toggle Status

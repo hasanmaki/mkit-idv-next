@@ -4,14 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.accounts import (
     AccountCreateRequest,
+    AccountCreateInput,
     AccountResponse,
     AccountUpdateRequest,
+    BulkAccountCreateRequest,
 )
 from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
 from app.models.accounts import Accounts
 from app.models.orders import Orders
-from app.models.statuses import AccountStatus
 from app.repos.base import BaseRepository
 
 logger = get_logger("service.accounts")
@@ -57,12 +58,92 @@ class AccountService:
             msisdn=data.msisdn.strip(),
             email=data.email.strip(),
             pin=data.pin or order.default_pin,
-            status=AccountStatus.NEW,
-            is_reseller=data.is_reseller or False,
+            is_active=True,
         )
 
         logger.info("Account created successfully", extra={"account_id": account.id})
         return AccountResponse.model_validate(account)
+
+    async def bulk_create_accounts(
+        self,
+        data: BulkAccountCreateRequest,
+    ) -> list[AccountResponse]:
+        """Create multiple accounts for an order at once.
+
+        - Verifies order exists
+        - Validates no duplicate MSISDNs within the batch
+        - Validates no duplicate MSISDNs already in database
+        - Creates all accounts in a single transaction
+        """
+        log_ctx = {"order_id": data.order_id, "account_count": len(data.accounts)}
+        logger.info("Creating bulk accounts", extra=log_ctx)
+
+        # Verify order exists
+        order = await self.orders_repo.get(self.session, data.order_id)
+        if not order:
+            raise AppNotFoundError(
+                message=f"Order with ID {data.order_id} not found",
+                error_code="order_not_found",
+                context={"order_id": data.order_id},
+            )
+
+        # Validate no duplicate MSISDNs within the batch
+        msisdn_set: set[str] = set()
+        for idx, acc_data in enumerate(data.accounts):
+            msisdn_normalized = acc_data.msisdn.strip()
+            if msisdn_normalized in msisdn_set:
+                raise AppValidationError(
+                    message=f"Duplicate MSISDN '{msisdn_normalized}' in batch",
+                    error_code="account_msisdn_duplicate_in_batch",
+                    context={
+                        "order_id": data.order_id,
+                        "msisdn": msisdn_normalized,
+                        "index": idx,
+                    },
+                )
+            msisdn_set.add(msisdn_normalized)
+
+        # Check for existing MSISDNs in database
+        existing_accounts = await self.accounts_repo.get_multi(
+            self.session, order_id=data.order_id
+        )
+        existing_msisdns = {acc.msisdn for acc in existing_accounts}
+
+        for idx, acc_data in enumerate(data.accounts):
+            msisdn_normalized = acc_data.msisdn.strip()
+            if msisdn_normalized in existing_msisdns:
+                raise AppValidationError(
+                    message=f"MSISDN '{msisdn_normalized}' already exists for this order",
+                    error_code="account_msisdn_duplicate",
+                    context={"order_id": data.order_id, "msisdn": msisdn_normalized},
+                )
+
+        # Create all accounts
+        created_accounts: list[Accounts] = []
+        for acc_data in data.accounts:
+            account = await self.accounts_repo.create(
+                self.session,
+                order_id=data.order_id,
+                msisdn=acc_data.msisdn.strip(),
+                email=acc_data.email.strip(),
+                pin=acc_data.pin or order.default_pin,
+                is_active=True,
+            )
+            created_accounts.append(account)
+            logger.info(
+                "Account created",
+                extra={
+                    "account_id": account.id,
+                    "msisdn": account.msisdn,
+                    "order_id": data.order_id,
+                },
+            )
+
+        logger.info(
+            "Bulk accounts created successfully",
+            extra={"order_id": data.order_id, "created_count": len(created_accounts)},
+        )
+        return [AccountResponse.model_validate(acc) for acc in created_accounts]
 
     async def get_account(self, account_id: int) -> AccountResponse:
         """Get an account by ID."""
@@ -80,16 +161,36 @@ class AccountService:
         order_id: int | None = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> list[AccountResponse]:
-        """List accounts with optional order filter."""
-        filters = {}
-        if order_id is not None:
-            filters["order_id"] = order_id
-
-        accounts = await self.accounts_repo.get_multi(
-            self.session, skip=skip, limit=limit, **filters
+    ) -> list[dict]:
+        """List accounts with optional order filter.
+        
+        Returns accounts with order_name included.
+        """
+        from sqlalchemy import select
+        
+        # Build query with join to get order_name
+        stmt = select(Accounts, Orders.name.label('order_name')).join(
+            Orders, Accounts.order_id == Orders.id
         )
-        return [AccountResponse.model_validate(a) for a in accounts]
+        
+        # Apply filters
+        if order_id is not None:
+            stmt = stmt.where(Accounts.order_id == order_id)
+        
+        # Apply pagination
+        stmt = stmt.offset(skip).limit(limit)
+        
+        result = await self.session.execute(stmt)
+        rows = result.all()
+        
+        # Format response
+        return [
+            {
+                **{c.name: getattr(row.Accounts, c.name) for c in Accounts.__table__.columns},
+                'order_name': row.order_name,
+            }
+            for row in rows
+        ]
 
     async def update_account(
         self,

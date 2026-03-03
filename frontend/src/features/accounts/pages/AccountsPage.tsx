@@ -118,10 +118,15 @@ export function AccountsPage() {
             <DialogHeader>
               <DialogTitle>Bulk Add Accounts</DialogTitle>
               <DialogDescription>
-                Masukkan list MSISDN, email dan batch untuk create banyak account.
+                Masukkan list MSISDN untuk create banyak account.
               </DialogDescription>
             </DialogHeader>
-            <BulkAccountFormFields form={vm.bulkForm} onChange={vm.setBulkForm} />
+            <BulkAccountFormFields
+              form={vm.bulkForm}
+              onChange={vm.setBulkForm}
+              orders={vm.orders}
+              isLoadingOrders={vm.isLoadingOrders}
+            />
             <DialogFooter>
               <Button onClick={() => void vm.createBulkAccounts()} disabled={vm.isSubmitting}>
                 Create Accounts
@@ -140,10 +145,15 @@ export function AccountsPage() {
             <DialogHeader>
               <DialogTitle>Add Single Account</DialogTitle>
               <DialogDescription>
-                Buat satu account MSISDN dengan email dan batch.
+                Buat satu account MSISDN dengan email.
               </DialogDescription>
             </DialogHeader>
-            <SingleAccountFormFields form={vm.singleForm} onChange={vm.setSingleForm} />
+            <SingleAccountFormFields
+              form={vm.singleForm}
+              onChange={vm.setSingleForm}
+              orders={vm.orders}
+              isLoadingOrders={vm.isLoadingOrders}
+            />
             <DialogFooter>
               <Button onClick={() => void vm.createSingleAccount()} disabled={vm.isSubmitting}>
                 Save
@@ -156,10 +166,10 @@ export function AccountsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Search & Filter</CardTitle>
-          <CardDescription>Filter account berdasarkan batch, msisdn, email, status, reseller.</CardDescription>
+          <CardDescription>Filter account berdasarkan msisdn, email, status, reseller.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="filter-msisdn">MSISDN</Label>
               <Input
@@ -177,16 +187,6 @@ export function AccountsPage() {
                 value={vm.filters.email}
                 onChange={(event) =>
                   vm.setFilters((prev) => ({ ...prev, email: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="filter-batch">Batch ID</Label>
-              <Input
-                id="filter-batch"
-                value={vm.filters.batch_id}
-                onChange={(event) =>
-                  vm.setFilters((prev) => ({ ...prev, batch_id: event.target.value }))
                 }
               />
             </div>

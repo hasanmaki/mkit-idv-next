@@ -67,9 +67,9 @@ export function AccountsTable({
               <Checkbox checked={allSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} />
             </TableHead>
             <TableHead className="w-[90px]">ID</TableHead>
+            <TableHead className="w-[120px]">Order</TableHead>
             <TableHead className="w-[170px]">MSISDN</TableHead>
             <TableHead className="w-[220px]">Email</TableHead>
-            <TableHead className="w-[170px]">Batch</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead className="w-[90px]">Reseller</TableHead>
             <TableHead className="w-[120px]">Balance</TableHead>
@@ -105,9 +105,9 @@ export function AccountsTable({
                     />
                   </TableCell>
                   <TableCell>#{account.id}</TableCell>
+                  <TableCell className="text-sm font-medium">{account.order_name}</TableCell>
                   <TableCell className="font-mono text-xs">{account.msisdn}</TableCell>
                   <TableCell className="truncate text-xs">{account.email}</TableCell>
-                  <TableCell className="truncate text-xs">{account.batch_id}</TableCell>
                   <TableCell>
                     <Badge variant={statusBadgeVariant(account.status)}>{account.status}</Badge>
                   </TableCell>

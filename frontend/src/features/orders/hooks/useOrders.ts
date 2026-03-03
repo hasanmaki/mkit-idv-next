@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { apiRequest } from "@/lib/api";
-import type { Order, OrderCreatePayload, OrderUpdatePayload } from "../types";
+import type { Order, OrderCreatePayload } from "../types";
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -12,7 +12,6 @@ export function useOrders() {
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
 
@@ -25,16 +24,8 @@ export function useOrders() {
     is_active: true,
     notes: "",
   });
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    email: string;
-    description: string | null;
-    is_active: boolean;
-    notes: string | null;
-  } | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [pendingDeleteOrderId, setPendingDeleteOrderId] = useState<number | null>(null);
 
   const totalActive = useMemo(
@@ -112,9 +103,12 @@ export function useOrders() {
       setIsSubmitting(true);
       setErrorMessage(null);
 
-      // Parse MSISDNs from comma-separated string
+      // Parse MSISDNs from comma-separated or newline-separated string
       const msisdnList = createForm.msisdns
-        ? createForm.msisdns.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+        ? createForm.msisdns
+            .split(/[\n,]+/)  // Split by newline OR comma
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
         : undefined;
 
       const payload: OrderCreatePayload = {
@@ -145,57 +139,6 @@ export function useOrders() {
       toast.error("Gagal membuat order.");
     } finally {
       setIsSubmitting(false);
-    }
-  }
-
-  function openEditOrder(order: Order): void {
-    setEditingOrderId(order.id);
-    setEditForm({
-      name: order.name,
-      email: order.email,
-      description: order.description,
-      is_active: order.is_active,
-      notes: order.notes,
-    });
-    setIsEditDialogOpen(true);
-  }
-
-  async function saveEditOrder(): Promise<void> {
-    if (!editingOrderId || !editForm) {
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      markRowAction(editingOrderId, "edit");
-
-      const payload: OrderUpdatePayload = {
-        name: editForm.name || null,
-        email: editForm.email || null,
-        description: editForm.description || null,
-        is_active: editForm.is_active,
-        notes: editForm.notes || null,
-      };
-
-      const updated = await apiRequest<Order>(
-        `/v1/orders/${editingOrderId}`,
-        "PATCH",
-        payload,
-      );
-      setIsEditDialogOpen(false);
-      setEditingOrderId(null);
-      setEditForm(null);
-      upsertOrder(updated);
-      toast.success(`Order #${editingOrderId} berhasil diupdate.`);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(`Gagal update order #${editingOrderId}.`);
-    } finally {
-      setIsSubmitting(false);
-      if (editingOrderId) {
-        clearRowAction(editingOrderId);
-      }
     }
   }
 
@@ -301,16 +244,12 @@ export function useOrders() {
     pendingRowActions,
     isCreateDialogOpen,
     setIsCreateDialogOpen,
-    isEditDialogOpen,
-    setIsEditDialogOpen,
     isDeleteConfirmOpen,
     setIsDeleteConfirmOpen,
     isBulkDeleteConfirmOpen,
     setIsBulkDeleteConfirmOpen,
     createForm,
     setCreateForm,
-    editForm,
-    setEditForm,
     isSubmitting,
     totalActive,
     totalInactive,
@@ -320,8 +259,6 @@ export function useOrders() {
     toggleSelectAll,
     toggleSelectOrder,
     createOrder,
-    openEditOrder,
-    saveEditOrder,
     openDeleteConfirm,
     confirmDeleteSingle,
     confirmDeleteSelected,

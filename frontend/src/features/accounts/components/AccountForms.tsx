@@ -10,28 +10,50 @@ import { ACCOUNT_STATUSES, type AccountBulkForm, type AccountEditForm, type Acco
 type SingleAccountFormFieldsProps = {
   form: AccountSingleForm;
   onChange: React.Dispatch<React.SetStateAction<AccountSingleForm>>;
+  orders: { id: number; name: string }[];
+  isLoadingOrders: boolean;
 };
 
-export function SingleAccountFormFields({ form, onChange }: SingleAccountFormFieldsProps) {
+export function SingleAccountFormFields({ form, onChange, orders, isLoadingOrders }: SingleAccountFormFieldsProps) {
   return (
-    <div className="grid gap-4 py-2 md:grid-cols-2">
+    <div className="grid gap-4 py-2">
       <div className="space-y-2">
-        <Label htmlFor="single-msisdn">MSISDN</Label>
-        <Input
-          id="single-msisdn"
-          value={form.msisdn}
-          onChange={(event) => onChange((prev) => ({ ...prev, msisdn: event.target.value }))}
-        />
+        <Label htmlFor="single-order">Order</Label>
+        <Select
+          value={form.order_id.toString()}
+          onValueChange={(value) => onChange((prev) => ({ ...prev, order_id: Number(value) }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select order" />
+          </SelectTrigger>
+          <SelectContent>
+            {orders.map((order) => (
+              <SelectItem key={order.id} value={order.id.toString()}>
+                {order.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-4 py-2 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="single-msisdn">MSISDN</Label>
+          <Input
+            id="single-msisdn"
+            value={form.msisdn}
+            onChange={(event) => onChange((prev) => ({ ...prev, msisdn: event.target.value }))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="single-pin">PIN</Label>
+          <Input
+            id="single-pin"
+            value={form.pin}
+            onChange={(event) => onChange((prev) => ({ ...prev, pin: event.target.value }))}
+          />
+        </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="single-batch">Batch ID</Label>
-        <Input
-          id="single-batch"
-          value={form.batch_id}
-          onChange={(event) => onChange((prev) => ({ ...prev, batch_id: event.target.value }))}
-        />
-      </div>
-      <div className="space-y-2 md:col-span-2">
         <Label htmlFor="single-email">Email</Label>
         <Input
           id="single-email"
@@ -40,14 +62,6 @@ export function SingleAccountFormFields({ form, onChange }: SingleAccountFormFie
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="single-pin">PIN</Label>
-        <Input
-          id="single-pin"
-          value={form.pin}
-          onChange={(event) => onChange((prev) => ({ ...prev, pin: event.target.value }))}
-        />
-      </div>
-      <div className="space-y-2 md:col-span-2">
         <Label htmlFor="single-notes">Notes</Label>
         <Textarea
           id="single-notes"
@@ -63,12 +77,32 @@ export function SingleAccountFormFields({ form, onChange }: SingleAccountFormFie
 type BulkAccountFormFieldsProps = {
   form: AccountBulkForm;
   onChange: React.Dispatch<React.SetStateAction<AccountBulkForm>>;
+  orders: { id: number; name: string }[];
+  isLoadingOrders: boolean;
 };
 
-export function BulkAccountFormFields({ form, onChange }: BulkAccountFormFieldsProps) {
+export function BulkAccountFormFields({ form, onChange, orders, isLoadingOrders }: BulkAccountFormFieldsProps) {
   return (
-    <div className="grid gap-4 py-2 md:grid-cols-2">
-      <div className="space-y-2 md:col-span-2">
+    <div className="grid gap-4 py-2">
+      <div className="space-y-2">
+        <Label htmlFor="bulk-order">Order</Label>
+        <Select
+          value={form.order_id.toString()}
+          onValueChange={(value) => onChange((prev) => ({ ...prev, order_id: Number(value) }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select order" />
+          </SelectTrigger>
+          <SelectContent>
+            {orders.map((order) => (
+              <SelectItem key={order.id} value={order.id.toString()}>
+                {order.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="bulk-msisdns">MSISDN List</Label>
         <Textarea
           id="bulk-msisdns"
@@ -80,29 +114,23 @@ export function BulkAccountFormFields({ form, onChange }: BulkAccountFormFieldsP
           }
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="bulk-batch">Batch ID</Label>
-        <Input
-          id="bulk-batch"
-          value={form.batch_id}
-          onChange={(event) => onChange((prev) => ({ ...prev, batch_id: event.target.value }))}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="bulk-pin">Default PIN</Label>
-        <Input
-          id="bulk-pin"
-          value={form.pin}
-          onChange={(event) => onChange((prev) => ({ ...prev, pin: event.target.value }))}
-        />
-      </div>
-      <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="bulk-email">Email</Label>
-        <Input
-          id="bulk-email"
-          value={form.email}
-          onChange={(event) => onChange((prev) => ({ ...prev, email: event.target.value }))}
-        />
+      <div className="grid gap-4 py-2 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="bulk-pin">Default PIN</Label>
+          <Input
+            id="bulk-pin"
+            value={form.pin}
+            onChange={(event) => onChange((prev) => ({ ...prev, pin: event.target.value }))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bulk-email">Email</Label>
+          <Input
+            id="bulk-email"
+            value={form.email}
+            onChange={(event) => onChange((prev) => ({ ...prev, email: event.target.value }))}
+          />
+        </div>
       </div>
     </div>
   );

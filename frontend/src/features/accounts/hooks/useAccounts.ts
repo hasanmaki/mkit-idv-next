@@ -2,10 +2,10 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
 import { apiRequest } from "@/lib/api";
-import type { 
-  Account, 
-  AccountCreatePayload, 
-  AccountFilters, 
+import type {
+  Account,
+  AccountCreatePayload,
+  AccountFilters,
   AccountUpdatePayload,
   AccountSingleForm,
   AccountBulkForm,
@@ -28,10 +28,13 @@ export function useAccounts() {
 
   const [filters, setFilters] = useState<AccountFilters>(defaultAccountFilters);
 
+  // Orders for dropdown
+  const [orders, setOrders] = useState<{ id: number; name: string }[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
   const [singleForm, setSingleForm] = useState<AccountSingleForm>({
     order_id: 0,
     msisdn: "",
-    batch_id: "",
     email: "",
     pin: "",
     notes: "",
@@ -41,7 +44,6 @@ export function useAccounts() {
   const [bulkForm, setBulkForm] = useState<AccountBulkForm>({
     order_id: 0,
     msisdns_text: "",
-    batch_id: "",
     pin: "",
     email: "",
   });
@@ -56,6 +58,19 @@ export function useAccounts() {
   const selectedCount = selectedAccountIds.length;
   const allSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
 
+  // Load orders for dropdown
+  const loadOrders = useCallback(async (): Promise<void> => {
+    try {
+      setIsLoadingOrders(true);
+      const ordersData = await apiRequest<{ id: number; name: string }[]>("/v1/orders", "GET");
+      setOrders(ordersData);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, []);
+
   const loadAccounts = useCallback(async (): Promise<void> => {
     try {
       setIsLoadingAccounts(true);
@@ -66,7 +81,6 @@ export function useAccounts() {
       if (filters.msisdn) params.set("msisdn", filters.msisdn);
       if (filters.email) params.set("email", filters.email);
       if (filters.status) params.set("status", filters.status);
-      if (filters.batch_id) params.set("batch_id", filters.batch_id);
       if (filters.is_reseller) params.set("is_reseller", filters.is_reseller);
 
       const payload = await apiRequest<Account[]>(`/v1/accounts?${params.toString()}`, "GET");
@@ -81,7 +95,8 @@ export function useAccounts() {
 
   useEffect(() => {
     void loadAccounts();
-  }, [loadAccounts]);
+    void loadOrders();
+  }, [loadAccounts, loadOrders]);
 
   function applyFilters(): void {
     void loadAccounts();
@@ -314,6 +329,8 @@ export function useAccounts() {
     totalReseller,
     selectedCount,
     allSelected,
+    orders,
+    isLoadingOrders,
     loadAccounts,
     applyFilters,
     resetFilters,

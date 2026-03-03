@@ -1,7 +1,5 @@
 """Binding service layer - business logic with Pydantic DTOs."""
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.api.schemas.bindings import (
     BalanceStartUpdateRequest,
     BindAccountRequest,
@@ -18,6 +16,7 @@ from app.models.bindings import Bindings
 from app.models.orders import Orders
 from app.models.servers import Servers
 from app.repos.base import BaseRepository
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger("service.bindings")
 
@@ -48,9 +47,7 @@ class BindingService:
             )
 
         # Get accounts for this order
-        accounts = await self.accounts_repo.get_multi(
-            self.session, order_id=order_id
-        )
+        accounts = await self.accounts_repo.get_multi(self.session, order_id=order_id)
 
         return [
             {
@@ -64,9 +61,7 @@ class BindingService:
 
     async def list_active_servers(self) -> list[dict]:
         """List active servers (for dropdown)."""
-        servers = await self.servers_repo.get_multi(
-            self.session, is_active=True
-        )
+        servers = await self.servers_repo.get_multi(self.session, is_active=True)
 
         return [
             {
@@ -118,7 +113,10 @@ class BindingService:
             raise AppValidationError(
                 message=f"Account {data.account_id} is already bound",
                 error_code="account_already_bound",
-                context={"account_id": data.account_id, "existing_binding_id": existing_binding.id},
+                context={
+                    "account_id": data.account_id,
+                    "existing_binding_id": existing_binding.id,
+                },
             )
 
         # Create binding
@@ -161,7 +159,7 @@ class BindingService:
                 results.append(BindingResponse.model_validate(binding))
             except Exception as e:
                 logger.warning(
-                    f"Failed to bind account {account_id}: {str(e)}",
+                    f"Failed to bind account {account_id}: {e!s}",
                     extra={"account_id": account_id},
                 )
                 # Continue with next account
