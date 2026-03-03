@@ -6,6 +6,7 @@ export type Account = {
   email: string;
   pin: string | null;
   is_active: boolean;
+  is_processed: boolean;
   balance_last: number | null;
   card_active_until: string | null;
   grace_period_until: string | null;
@@ -29,6 +30,7 @@ export type AccountUpdatePayload = {
   email?: string | null;
   pin?: string | null;
   is_active?: boolean;
+  is_processed?: boolean;
   notes?: string | null;
 };
 

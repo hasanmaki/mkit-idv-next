@@ -19,7 +19,7 @@ class Orders(Base, TimestampMixin):
 
     # Customer identity
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     # Default credentials for accounts
     default_pin: Mapped[str | None] = mapped_column(String(20), nullable=True)

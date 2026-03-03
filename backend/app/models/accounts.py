@@ -36,6 +36,9 @@ class Accounts(Base, TimestampMixin):
 
     # Simple active flag
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    is_processed: Mapped[bool] = mapped_column(default=False, nullable=False, index=True)
+
+    is_processed: Mapped[bool] = mapped_column(default=False, nullable=False, index=True)
 
     # Balance tracking - from balance check response
     balance_last: Mapped[int | None] = mapped_column(Integer, nullable=True)

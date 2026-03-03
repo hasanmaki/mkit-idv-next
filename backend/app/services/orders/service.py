@@ -62,20 +62,23 @@ class OrderService:
 
         # Create accounts if MSISDNs provided
         if data.msisdns:
+            from app.services.accounts.service import AccountService
+            account_service = AccountService(self.session)
+            
             logger.info(
                 f"Creating {len(data.msisdns)} accounts for order",
                 extra={"order_id": order.id},
             )
             for msisdn in data.msisdns:
                 try:
-                    await self.accounts_repo.create(
-                        self.session,
-                        order_id=order.id,
-                        msisdn=msisdn.strip(),
-                        email=data.email.lower().strip(),
-                        pin=data.default_pin,
-                        status=AccountStatus.NEW,
-                        is_reseller=False,
+                    from app.api.schemas.accounts import AccountCreateRequest
+                    await account_service.create_account(
+                        AccountCreateRequest(
+                            order_id=order.id,
+                            msisdn=msisdn.strip(),
+                            email=data.email.lower().strip(),
+                            pin=data.default_pin,
+                        )
                     )
                 except Exception as e:
                     logger.warning(

@@ -72,6 +72,7 @@ class AccountUpdateRequest(BaseModel):
     email: EmailStr | None = None
     pin: str | None = Field(None, min_length=4, max_length=10)
     is_active: bool | None = None
+    is_processed: bool | None = None
     notes: str | None = Field(None, max_length=255)
 
 
@@ -94,6 +95,7 @@ class AccountResponse(BaseModel):
     email: str = Field(..., examples=["customer@example.com"])
     pin: str | None = Field(None, examples=["1234"])
     is_active: bool = Field(..., examples=[True], description="Whether account is active")
+    is_processed: bool = Field(..., examples=[False], description="Whether account has been processed")
     balance_last: int | None = Field(None, examples=[50000], description="Last known balance")
     card_active_until: str | None = Field(None, examples=["02 Mar 2027"])
     grace_period_until: str | None = Field(None, examples=["01 May 2027"])

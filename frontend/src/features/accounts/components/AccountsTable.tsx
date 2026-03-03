@@ -60,6 +60,7 @@ export function AccountsTable({
             <TableHead className="w-[120px]">Order</TableHead>
             <TableHead className="w-[150px]">MSISDN</TableHead>
             <TableHead className="w-[180px]">Email</TableHead>
+            <TableHead className="w-[100px]">Processed</TableHead>
             <TableHead className="w-[90px]">Balance</TableHead>
             <TableHead className="w-[90px]">Active</TableHead>
             <TableHead className="w-[90px] text-right">Actions</TableHead>
@@ -97,6 +98,11 @@ export function AccountsTable({
                   <TableCell className="text-sm font-medium">{account.order_name}</TableCell>
                   <TableCell className="font-mono text-xs">{account.msisdn}</TableCell>
                   <TableCell className="truncate text-xs">{account.email}</TableCell>
+                  <TableCell>
+                    <Badge variant={account.is_processed ? "outline" : "secondary"}>
+                      {account.is_processed ? "Processed" : "New"}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {account.balance_last?.toLocaleString() ?? "-"}
                   </TableCell>

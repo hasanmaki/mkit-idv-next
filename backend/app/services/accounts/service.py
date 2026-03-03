@@ -59,6 +59,7 @@ class AccountService:
             email=data.email.strip(),
             pin=data.pin or order.default_pin,
             is_active=True,
+            is_processed=False,
         )
 
         logger.info("Account created successfully", extra={"account_id": account.id})
@@ -128,6 +129,7 @@ class AccountService:
                 email=acc_data.email.strip(),
                 pin=acc_data.pin or order.default_pin,
                 is_active=True,
+                is_processed=False,
             )
             created_accounts.append(account)
             logger.info(

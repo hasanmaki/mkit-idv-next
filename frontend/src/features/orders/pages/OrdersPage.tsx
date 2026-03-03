@@ -95,7 +95,7 @@ export function OrdersPage() {
                   <DialogHeader>
                     <DialogTitle>Add Order</DialogTitle>
                     <DialogDescription>
-                      Buat order customer baru dengan email unik.
+                      Buat order customer baru.
                     </DialogDescription>
                   </DialogHeader>
                   <CreateOrderFormFields form={vm.createForm} onChange={vm.setCreateForm} />

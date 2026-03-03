@@ -1,17 +1,5 @@
-from app.services.accounts.services import AccountsService
-from app.services.accounts.schemas import (
-    AccountCreateBulk,
-    AccountCreateSingle,
-    AccountDelete,
-    AccountRead,
-    AccountUpdate,
-)
+"""Account service initialization."""
 
-__all__ = [
-    "AccountsService",
-    "AccountCreateBulk",
-    "AccountCreateSingle",
-    "AccountDelete",
-    "AccountRead",
-    "AccountUpdate",
-]
+from app.services.accounts.service import AccountService
+
+__all__ = ["AccountService"]

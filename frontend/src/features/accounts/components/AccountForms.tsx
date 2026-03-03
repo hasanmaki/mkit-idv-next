@@ -1,10 +1,17 @@
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
-import { type AccountSingleForm, type AccountBulkForm, type AccountEditForm } from "../types";
+import { type AccountBulkForm, type AccountEditForm, type AccountSingleForm } from "../types";
 
 type SingleAccountFormFieldsProps = {
   form: AccountSingleForm;
@@ -13,7 +20,7 @@ type SingleAccountFormFieldsProps = {
   isLoadingOrders: boolean;
 };
 
-export function SingleAccountFormFields({ form, onChange, orders, isLoadingOrders }: SingleAccountFormFieldsProps) {
+export function SingleAccountFormFields({ form, onChange, orders = [], isLoadingOrders }: SingleAccountFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2">
       <div className="space-y-2">
@@ -26,11 +33,17 @@ export function SingleAccountFormFields({ form, onChange, orders, isLoadingOrder
             <SelectValue placeholder="Select order" />
           </SelectTrigger>
           <SelectContent>
-            {orders.map((order) => (
-              <SelectItem key={order.id} value={order.id.toString()}>
-                {order.name}
-              </SelectItem>
-            ))}
+            {isLoadingOrders ? (
+              <SelectItem value="loading" disabled>Loading orders...</SelectItem>
+            ) : orders.length === 0 ? (
+              <SelectItem value="no-orders" disabled>No orders available</SelectItem>
+            ) : (
+              orders.map((order) => (
+                <SelectItem key={order.id} value={order.id.toString()}>
+                  {order.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -80,7 +93,7 @@ type BulkAccountFormFieldsProps = {
   isLoadingOrders: boolean;
 };
 
-export function BulkAccountFormFields({ form, onChange, orders, isLoadingOrders }: BulkAccountFormFieldsProps) {
+export function BulkAccountFormFields({ form, onChange, orders = [], isLoadingOrders }: BulkAccountFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2">
       <div className="space-y-2">
@@ -93,11 +106,17 @@ export function BulkAccountFormFields({ form, onChange, orders, isLoadingOrders 
             <SelectValue placeholder="Select order" />
           </SelectTrigger>
           <SelectContent>
-            {orders.map((order) => (
-              <SelectItem key={order.id} value={order.id.toString()}>
-                {order.name}
-              </SelectItem>
-            ))}
+            {isLoadingOrders ? (
+              <SelectItem value="loading" disabled>Loading orders...</SelectItem>
+            ) : orders.length === 0 ? (
+              <SelectItem value="no-orders" disabled>No orders available</SelectItem>
+            ) : (
+              orders.map((order) => (
+                <SelectItem key={order.id} value={order.id.toString()}>
+                  {order.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
