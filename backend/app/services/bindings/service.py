@@ -137,9 +137,38 @@ class BindingService:
         return results
 
     async def get_binding(self, binding_id: int) -> BindingResponse:
-        """Get a binding by ID."""
-        binding = await self._get_binding_entity(binding_id)
-        return BindingResponse.model_validate(binding)
+        """Get a binding by ID with joined human-readable data."""
+        from sqlalchemy import select
+        
+        stmt = (
+            select(
+                Bindings,
+                Orders.name.label("order_name"),
+                Servers.name.label("server_name"),
+                Accounts.msisdn.label("account_msisdn"),
+            )
+            .join(Orders, Bindings.order_id == Orders.id)
+            .join(Servers, Bindings.server_id == Servers.id)
+            .join(Accounts, Bindings.account_id == Accounts.id)
+            .where(Bindings.id == binding_id)
+        )
+        
+        result = await self.session.execute(stmt)
+        row = result.first()
+        
+        if not row:
+            raise AppNotFoundError(
+                message=f"Binding dengan ID {binding_id} tidak ditemukan",
+                error_code="binding_not_found",
+                context={"binding_id": binding_id},
+            )
+            
+        return BindingResponse(
+            **{c.name: getattr(row.Bindings, c.name) for c in Bindings.__table__.columns},
+            order_name=row.order_name,
+            server_name=row.server_name,
+            account_msisdn=row.account_msisdn,
+        )
 
     async def list_bindings(
         self,
@@ -148,17 +177,43 @@ class BindingService:
         order_id: int | None = None,
         is_active: bool | None = None,
     ) -> list[BindingResponse]:
-        """List bindings with optional filtering."""
-        filters = {}
+        """List bindings with filtering and joined human-readable data."""
+        from sqlalchemy import select
+        
+        filters = []
         if order_id is not None:
-            filters["order_id"] = order_id
+            filters.append(Bindings.order_id == order_id)
         if is_active is not None:
-            filters["is_active"] = is_active
+            filters.append(Bindings.is_active == is_active)
 
-        bindings = await self.bindings_repo.get_multi(
-            self.session, skip=skip, limit=limit, **filters
+        stmt = (
+            select(
+                Bindings,
+                Orders.name.label("order_name"),
+                Servers.name.label("server_name"),
+                Accounts.msisdn.label("account_msisdn"),
+            )
+            .join(Orders, Bindings.order_id == Orders.id)
+            .join(Servers, Bindings.server_id == Servers.id)
+            .join(Accounts, Bindings.account_id == Accounts.id)
+            .where(*filters)
+            .order_by(Bindings.id.desc())
+            .offset(skip)
+            .limit(limit)
         )
-        return [BindingResponse.model_validate(b) for b in bindings]
+
+        result = await self.session.execute(stmt)
+        rows = result.all()
+
+        return [
+            BindingResponse(
+                **{c.name: getattr(row.Bindings, c.name) for c in Bindings.__table__.columns},
+                order_name=row.order_name,
+                server_name=row.server_name,
+                account_msisdn=row.account_msisdn,
+            )
+            for row in rows
+        ]
 
     async def list_active_bindings(self) -> list[BindingResponse]:
         """List all active bindings."""
@@ -183,19 +238,36 @@ class BindingService:
         logger.info(
             "Workflow step updated", extra={"binding_id": binding_id, "step": data.step}
         )
-        return BindingResponse.model_validate(updated)
+        return await self.get_binding(binding_id)
+
+    async def update_binding(
+        self, 
+        binding_id: int, 
+        data: dict
+    ) -> BindingResponse:
+        """Update binding properties like server_id, priority, etc."""
+        binding = await self._get_binding_entity(binding_id)
+        
+        # If server is changing, verify it exists
+        if "server_id" in data and data["server_id"] != binding.server_id:
+            await self._verify_server_exists(data["server_id"])
+            
+        updated = await self.bindings_repo.update(self.session, binding, **data)
+        
+        logger.info("Binding updated", extra={"binding_id": binding_id})
+        return await self.get_binding(binding_id)
 
     async def release_binding(
         self,
         binding_id: int,
         data: ReleaseBindingRequest,
     ) -> None:
-        """Release (deactivate) a binding."""
-        binding = await self._get_binding_entity(binding_id)
-
-        # Deactivate binding
-        await self.bindings_repo.update(self.session, binding, is_active=False)
-        logger.info("Binding released", extra={"binding_id": binding_id})
+        """Release (delete) a binding to free the account."""
+        await self._get_binding_entity(binding_id)
+        
+        # Hard delete to free up the account_id UniqueConstraint
+        await self.bindings_repo.delete(self.session, binding_id)
+        logger.info("Binding released (deleted)", extra={"binding_id": binding_id})
 
     async def set_balance_start(
         self,

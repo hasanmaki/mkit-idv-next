@@ -1,4 +1,4 @@
-import { Loader2, MoreHorizontal, LogOut, RefreshCcw, Settings, Wallet, UserCheck, ShieldCheck } from "lucide-react";
+import { Loader2, MoreHorizontal, LogOut, RefreshCcw, Settings, Wallet, UserCheck, ShieldCheck, Edit2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ type BindingsTableProps = {
   pendingRowActions: Record<number, string>;
   onRequestOTP: (bindingId: number) => void;
   onVerifyOTP: (bindingId: number) => void;
+  onEdit: (binding: Binding) => void;
   onSetBalance: (bindingId: number) => void;
   onRelease: (bindingId: number) => void;
 };
@@ -34,6 +35,7 @@ export function BindingsTable({
   pendingRowActions,
   onRequestOTP,
   onVerifyOTP,
+  onEdit,
   onSetBalance,
   onRelease,
 }: BindingsTableProps) {
@@ -62,10 +64,10 @@ export function BindingsTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[80px]">ID</TableHead>
-            <TableHead className="w-[100px]">Order/Session</TableHead>
-            <TableHead className="w-[100px]">Server</TableHead>
-            <TableHead className="w-[120px]">Account</TableHead>
-            <TableHead className="w-[130px]">Reseller</TableHead>
+            <TableHead className="w-[150px]">Session / Order</TableHead>
+            <TableHead className="w-[120px]">Server</TableHead>
+            <TableHead className="w-[150px]">Account (MSISDN)</TableHead>
+            <TableHead className="w-[110px]">Type</TableHead>
             <TableHead className="w-[140px]">Step</TableHead>
             <TableHead className="w-[120px]">Balance</TableHead>
             <TableHead className="w-[150px]">Token Info</TableHead>
@@ -95,35 +97,37 @@ export function BindingsTable({
                 <TableRow key={binding.id}>
                   <TableCell className="font-mono text-xs">#{binding.id}</TableCell>
                   <TableCell>
-                    <div className="font-medium text-sm">Session #{binding.order_id}</div>
+                    <div className="font-medium text-sm">{binding.order_name || `Session #${binding.order_id}`}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">Server #{binding.server_id}</div>
+                    <div className="text-sm">{binding.server_name || `Server #${binding.server_id}`}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-sm">Acc #{binding.account_id}</div>
+                    <div className="font-medium text-sm text-primary">{binding.account_msisdn || `Acc #${binding.account_id}`}</div>
                   </TableCell>
                   <TableCell>
                     {binding.is_reseller ? (
-                      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
-                        <UserCheck className="mr-1 h-3 w-3" /> Reseller
+                      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 h-5 px-1.5 text-[10px]">
+                        <UserCheck className="mr-1 h-3 w-3" /> RESELLER
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground text-xs">Normal</span>
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground">
+                        NORMAL
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStepColor(binding.step) as any}>{binding.step}</Badge>
+                    <Badge variant={getStepColor(binding.step) as any} className="font-mono text-[10px]">
+                      {binding.step}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {binding.balance_start !== null ? (
-                      <div className="text-sm">
-                        <span className="font-bold text-green-600">
-                          Rp{binding.balance_start.toLocaleString()}
-                        </span>
+                      <div className="text-sm font-bold text-green-600">
+                        Rp{binding.balance_start.toLocaleString()}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-xs italic">Not Checked</span>
+                      <span className="text-muted-foreground text-[10px] italic">Not Checked</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -133,7 +137,7 @@ export function BindingsTable({
                         {binding.token_location.split('/').pop()}
                       </div>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground">-</span>
+                      <span className="text-[10px] text-muted-foreground italic">No Token</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -148,6 +152,14 @@ export function BindingsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          disabled={isRowBusy}
+                          onClick={() => onEdit(binding)}
+                        >
+                          <Edit2 className="mr-2 h-4 w-4 text-blue-600" />
+                          Edit Binding
+                        </DropdownMenuItem>
+                        
                         {(binding.step === "BINDED" || binding.step === "LOGGED_OUT") && (
                           <DropdownMenuItem
                             disabled={isRowBusy}
@@ -167,24 +179,23 @@ export function BindingsTable({
                           </DropdownMenuItem>
                         )}
                         {binding.step === "VERIFIED" && (
-                          <>
-                            <DropdownMenuItem
-                              disabled={isRowBusy}
-                              onClick={() => onSetBalance(binding.id)}
-                            >
-                              <Wallet className="mr-2 h-4 w-4 text-green-600" />
-                              Update Balance
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={isRowBusy}
-                              onClick={() => onRelease(binding.id)}
-                              className="text-destructive"
-                            >
-                              <LogOut className="mr-2 h-4 w-4" />
-                              Release Session
-                            </DropdownMenuItem>
-                          </>
+                          <DropdownMenuItem
+                            disabled={isRowBusy}
+                            onClick={() => onSetBalance(binding.id)}
+                          >
+                            <Wallet className="mr-2 h-4 w-4 text-green-600" />
+                            Update Balance
+                          </DropdownMenuItem>
                         )}
+                        
+                        <DropdownMenuItem
+                          disabled={isRowBusy}
+                          onClick={() => onRelease(binding.id)}
+                          className="text-destructive"
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Unbind Akun
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -71,8 +71,11 @@ class BindingResponse(BaseModel):
 
     id: int = Field(..., examples=[1])
     order_id: int = Field(..., examples=[1])
+    order_name: str | None = Field(None, examples=["Session Alpha"])
     server_id: int = Field(..., examples=[1])
+    server_name: str | None = Field(None, examples=["Server 01"])
     account_id: int = Field(..., examples=[100])
+    account_msisdn: str | None = Field(None, examples=["08123456789"])
     step: str = Field(..., examples=["BINDED"])
     is_reseller: bool = Field(..., examples=[False])
     token_location: str | None = Field(None, examples=["/path/to/token"])

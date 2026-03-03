@@ -135,6 +135,27 @@ async def get_binding(
 
 
 @router.patch(
+    "/{binding_id}",
+    response_model=BindingResponse,
+    responses={404: {"description": "Binding not found"}},
+)
+async def update_binding(
+    binding_id: int,
+    payload: dict,
+    service: BindingService = Depends(get_binding_service),
+) -> BindingResponse:
+    """Update binding properties.
+
+    Allows changing:
+    - **server_id**: Change the IDV server instance
+    - **priority**: Adjust queue order
+    - **is_reseller**: Toggle reseller mode
+    - **description / notes**: Update metadata
+    """
+    return await service.update_binding(binding_id, payload)
+
+
+@router.patch(
     "/{binding_id}/step",
     response_model=BindingResponse,
     responses={404: {"description": "Binding not found"}},

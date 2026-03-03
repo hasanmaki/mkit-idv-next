@@ -33,6 +33,7 @@ export function useBindings() {
 
   const [isBindDialogOpen, setIsBindDialogOpen] = useState(false);
   const [isBulkBindDialogOpen, setIsBulkBindDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isOTPDialogOpen, setIsOTPDialogOpen] = useState(false);
   const [isBalanceDialogOpen, setIsBalanceDialogOpen] = useState(false);
   const [isReleaseConfirmOpen, setIsReleaseConfirmOpen] = useState(false);
@@ -57,6 +58,14 @@ export function useBindings() {
     order_id: 0,
     server_id: 0,
     account_ids: "" as string | number[],
+    is_reseller: false,
+    priority: 1,
+    description: "",
+    notes: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    server_id: 0,
     is_reseller: false,
     priority: 1,
     description: "",
@@ -120,7 +129,7 @@ export function useBindings() {
   function clearRowAction(bindingId: number): void {
     setPendingRowActions((previous) => {
       const next = { ...previous };
-      delete next[bindingId];
+      delete next[orderId];
       return next;
     });
   }
@@ -223,6 +232,29 @@ export function useBindings() {
       handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function updateBinding(): Promise<void> {
+    if (!activeBindingId) return;
+    try {
+      setIsSubmitting(true);
+      markRowAction(activeBindingId, "update");
+
+      const updated = await apiRequest<Binding>(
+        `/v1/bindings/${activeBindingId}`,
+        "PATCH",
+        editForm,
+      );
+      upsertBinding(updated);
+      setIsEditDialogOpen(false);
+      setActiveBindingId(null);
+      toast.success("Binding berhasil diperbarui.");
+    } catch (error) {
+      handleError(error, { displayMode: "dialog" });
+    } finally {
+      setIsSubmitting(false);
+      if (activeBindingId) clearRowAction(activeBindingId);
     }
   }
 
@@ -333,17 +365,30 @@ export function useBindings() {
       setIsSubmitting(true);
       markRowAction(bindingId, "release");
 
+      // Backend now performs hard delete to free the account
       await apiRequest(`/v1/bindings/${bindingId}/release`, "POST", {});
       removeBindingFromState(bindingId);
       setIsReleaseConfirmOpen(false);
       setPendingReleaseBindingId(null);
-      toast.success("Binding berhasil di-release.");
+      toast.success("Binding berhasil dilepas (Unbind sukses).");
     } catch (error) {
       handleError(error);
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
     }
+  }
+
+  function openEditDialog(binding: Binding): void {
+    setActiveBindingId(binding.id);
+    setEditForm({
+      server_id: binding.server_id,
+      is_reseller: binding.is_reseller,
+      priority: binding.priority,
+      description: binding.description || "",
+      notes: binding.notes || "",
+    });
+    setIsEditDialogOpen(true);
   }
 
   function openOTPDialog(bindingId: number): void {
@@ -373,6 +418,8 @@ export function useBindings() {
     setIsBindDialogOpen,
     isBulkBindDialogOpen,
     setIsBulkBindDialogOpen,
+    isEditDialogOpen,
+    setIsEditDialogOpen,
     isOTPDialogOpen,
     setIsOTPDialogOpen,
     isBalanceDialogOpen,
@@ -387,17 +434,21 @@ export function useBindings() {
     setBindForm,
     bulkBindForm,
     setBulkBindForm,
+    editForm,
+    setEditForm,
     isSubmitting,
     activeBindingId,
     pendingReleaseBindingId,
     loadBindings,
     bindAccount,
     bulkBindAccounts,
+    updateBinding,
     requestOTP,
     verifyOTP,
     updateWorkflowStep,
     setBalanceStart,
     releaseBinding,
+    openEditDialog,
     openOTPDialog,
     openBalanceDialog,
     openReleaseConfirm,
