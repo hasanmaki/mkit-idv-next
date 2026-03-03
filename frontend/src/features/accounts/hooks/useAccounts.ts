@@ -1,23 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
 import { apiRequest } from "@/lib/api";
-
-import {
-  defaultAccountFilters,
-  defaultAccountBulkForm,
-  defaultAccountSingleForm,
-  toAccountEditForm,
-  type Account,
-  type AccountBulkForm,
-  type AccountCreateBulkPayload,
-  type AccountCreateSinglePayload,
-  type AccountDeletePayload,
-  type AccountEditForm,
-  type AccountFilters,
-  type AccountSingleForm,
-  type AccountUpdatePayload,
+import type { 
+  Account, 
+  AccountCreatePayload, 
+  AccountFilters, 
+  AccountUpdatePayload,
+  AccountSingleForm,
+  AccountBulkForm,
+  AccountEditForm,
 } from "../types";
+import { defaultAccountFilters } from "../types";
 
 export function useAccounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -32,109 +26,74 @@ export function useAccounts() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
 
-  const [singleForm, setSingleForm] = useState<AccountSingleForm>(defaultAccountSingleForm);
-  const [bulkForm, setBulkForm] = useState<AccountBulkForm>(defaultAccountBulkForm);
-  const [editForm, setEditForm] = useState<AccountEditForm | null>(null);
   const [filters, setFilters] = useState<AccountFilters>(defaultAccountFilters);
+
+  const [singleForm, setSingleForm] = useState<AccountSingleForm>({
+    order_id: 0,
+    msisdn: "",
+    batch_id: "",
+    email: "",
+    pin: "",
+    notes: "",
+    is_reseller: false,
+  });
+
+  const [bulkForm, setBulkForm] = useState<AccountBulkForm>({
+    order_id: 0,
+    msisdns_text: "",
+    batch_id: "",
+    pin: "",
+    email: "",
+  });
+
+  const [editForm, setEditForm] = useState<AccountEditForm | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
   const [pendingDeleteAccountId, setPendingDeleteAccountId] = useState<number | null>(null);
 
-  const totalReseller = useMemo(
-    () => accounts.filter((account) => account.is_reseller).length,
-    [accounts],
-  );
+  const totalReseller = useMemo(() => accounts.filter((a) => a.is_reseller).length, [accounts]);
   const selectedCount = selectedAccountIds.length;
-  const allSelected =
-    accounts.length > 0 && selectedAccountIds.length === accounts.length;
+  const allSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
 
-  useEffect(() => {
-    void loadAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function upsertAccount(nextAccount: Account): void {
-    setAccounts((previous) => {
-      const idx = previous.findIndex((account) => account.id === nextAccount.id);
-      if (idx < 0) {
-        return [nextAccount, ...previous];
-      }
-      const cloned = [...previous];
-      cloned[idx] = nextAccount;
-      return cloned;
-    });
-  }
-
-  function removeAccountFromState(accountId: number): void {
-    setAccounts((previous) => previous.filter((account) => account.id !== accountId));
-    setSelectedAccountIds((previous) => previous.filter((id) => id !== accountId));
-  }
-
-  function markRowAction(accountId: number, action: string): void {
-    setPendingRowActions((previous) => ({ ...previous, [accountId]: action }));
-  }
-
-  function clearRowAction(accountId: number): void {
-    setPendingRowActions((previous) => {
-      const next = { ...previous };
-      delete next[accountId];
-      return next;
-    });
-  }
-
-  function buildFilterQuery(nextFilters: AccountFilters): string {
-    const params = new URLSearchParams();
-    if (nextFilters.msisdn.trim()) {
-      params.set("msisdn", nextFilters.msisdn.trim());
-    }
-    if (nextFilters.email.trim()) {
-      params.set("email", nextFilters.email.trim());
-    }
-    if (nextFilters.batch_id.trim()) {
-      params.set("batch_id", nextFilters.batch_id.trim());
-    }
-    if (nextFilters.status) {
-      params.set("status_filter", nextFilters.status);
-    }
-    if (nextFilters.is_reseller) {
-      params.set("is_reseller", nextFilters.is_reseller);
-    }
-    const query = params.toString();
-    return query ? `?${query}` : "";
-  }
-
-  async function loadAccounts(nextFilters: AccountFilters = filters): Promise<void> {
+  const loadAccounts = useCallback(async (): Promise<void> => {
     try {
       setIsLoadingAccounts(true);
       setErrorMessage(null);
-      const payload = await apiRequest<Account[]>(
-        `/v1/accounts${buildFilterQuery(nextFilters)}`,
-        "GET",
-      );
+
+      const params = new URLSearchParams();
+      if (filters.order_id) params.set("order_id", filters.order_id.toString());
+      if (filters.msisdn) params.set("msisdn", filters.msisdn);
+      if (filters.email) params.set("email", filters.email);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.batch_id) params.set("batch_id", filters.batch_id);
+      if (filters.is_reseller) params.set("is_reseller", filters.is_reseller);
+
+      const payload = await apiRequest<Account[]>(`/v1/accounts?${params.toString()}`, "GET");
       setAccounts(payload);
-      setSelectedAccountIds((previous) =>
-        previous.filter((id) => payload.some((account) => account.id === id)),
-      );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memuat account list.");
+      toast.error("Gagal memuat accounts.");
     } finally {
       setIsLoadingAccounts(false);
     }
+  }, [filters]);
+
+  useEffect(() => {
+    void loadAccounts();
+  }, [loadAccounts]);
+
+  function applyFilters(): void {
+    void loadAccounts();
   }
 
-  async function applyFilters(): Promise<void> {
-    await loadAccounts(filters);
-  }
-
-  async function resetFilters(): Promise<void> {
+  function resetFilters(): void {
     setFilters(defaultAccountFilters);
-    await loadAccounts(defaultAccountFilters);
+    void loadAccounts();
   }
 
   function toggleSelectAll(checked: boolean): void {
-    setSelectedAccountIds(checked ? accounts.map((account) => account.id) : []);
+    setSelectedAccountIds(checked ? accounts.map((a) => a.id) : []);
   }
 
   function toggleSelectAccount(accountId: number, checked: boolean): void {
@@ -149,17 +108,27 @@ export function useAccounts() {
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
-      const payload: AccountCreateSinglePayload = {
+
+      const payload: AccountCreatePayload = {
+        order_id: singleForm.order_id,
         msisdn: singleForm.msisdn.trim(),
         email: singleForm.email.trim(),
-        batch_id: singleForm.batch_id.trim(),
-        pin: singleForm.pin.trim() || null,
-        notes: singleForm.notes.trim() || null,
+        pin: singleForm.pin || undefined,
+        is_reseller: singleForm.is_reseller,
       };
+
       const created = await apiRequest<Account>("/v1/accounts", "POST", payload);
-      upsertAccount(created);
-      setSingleForm(defaultAccountSingleForm);
+      setSingleForm({
+        order_id: 0,
+        msisdn: "",
+        batch_id: "",
+        email: "",
+        pin: "",
+        notes: "",
+        is_reseller: false,
+      });
       setIsSingleDialogOpen(false);
+      setAccounts((previous) => [created, ...previous]);
       toast.success("Account berhasil dibuat.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
@@ -169,33 +138,34 @@ export function useAccounts() {
     }
   }
 
-  function parseMsisdnText(value: string): string[] {
-    return value
-      .split(/[\r\n,;]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-
   async function createBulkAccounts(): Promise<void> {
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
-      const payload: AccountCreateBulkPayload = {
-        msisdns: parseMsisdnText(bulkForm.msisdns_text),
-        email: bulkForm.email.trim(),
-        batch_id: bulkForm.batch_id.trim(),
-        pin: bulkForm.pin.trim() || null,
+
+      const msisdns = bulkForm.msisdns_text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+      const payload = {
+        order_id: bulkForm.order_id,
+        msisdns,
+        email_suffix: bulkForm.email, // Mapping to backend
+        batch_id: bulkForm.batch_id,
+        pin: bulkForm.pin,
       };
-      const created = await apiRequest<Account[]>("/v1/accounts/bulk", "POST", payload);
-      if (created.length > 0) {
-        setAccounts((previous) => [...created, ...previous]);
-      }
-      setBulkForm(defaultAccountBulkForm);
+
+      await apiRequest<Account[]>("/v1/accounts/bulk", "POST", payload);
+      setBulkForm({
+        order_id: 0,
+        msisdns_text: "",
+        batch_id: "",
+        pin: "",
+        email: "",
+      });
       setIsBulkDialogOpen(false);
-      toast.success(`Bulk create berhasil: ${created.length} account.`);
+      void loadAccounts();
+      toast.success(`${msisdns.length} accounts berhasil dibuat.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Bulk create account gagal.");
+      toast.error("Gagal membuat bulk accounts.");
     } finally {
       setIsSubmitting(false);
     }
@@ -203,7 +173,14 @@ export function useAccounts() {
 
   function openEditAccount(account: Account): void {
     setEditingAccountId(account.id);
-    setEditForm(toAccountEditForm(account));
+    setEditForm({
+      email: account.email,
+      pin: account.pin || "",
+      status: account.status,
+      last_device_id: account.last_device_id || "",
+      notes: account.notes || "",
+      is_reseller: account.is_reseller,
+    });
     setIsEditDialogOpen(true);
   }
 
@@ -211,27 +188,30 @@ export function useAccounts() {
     if (!editingAccountId || !editForm) {
       return;
     }
+
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
       markRowAction(editingAccountId, "edit");
+
       const payload: AccountUpdatePayload = {
-        email: editForm.email.trim(),
-        pin: editForm.pin.trim() || null,
-        notes: editForm.notes.trim() || null,
-        status: editForm.status,
+        email: editForm.email || undefined,
+        pin: editForm.pin || undefined,
+        notes: editForm.notes || undefined,
         is_reseller: editForm.is_reseller,
-        last_device_id: editForm.last_device_id.trim() || null,
       };
+
       const updated = await apiRequest<Account>(
         `/v1/accounts/${editingAccountId}`,
         "PATCH",
         payload,
       );
-      upsertAccount(updated);
       setIsEditDialogOpen(false);
-      setEditForm(null);
       setEditingAccountId(null);
+      setEditForm(null);
+      setAccounts((previous) =>
+        previous.map((a) => (a.id === editingAccountId ? updated : a)),
+      );
       toast.success(`Account #${editingAccountId} berhasil diupdate.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
@@ -249,21 +229,18 @@ export function useAccounts() {
     setIsDeleteConfirmOpen(true);
   }
 
-  async function deleteById(accountId: number): Promise<void> {
-    const payload: AccountDeletePayload = { id: accountId };
-    await apiRequest<void>("/v1/accounts", "DELETE", payload);
-  }
-
   async function confirmDeleteSingle(): Promise<void> {
     if (!pendingDeleteAccountId) {
       return;
     }
+
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
       markRowAction(pendingDeleteAccountId, "delete");
-      await deleteById(pendingDeleteAccountId);
-      removeAccountFromState(pendingDeleteAccountId);
+      await apiRequest<void>(`/v1/accounts/${pendingDeleteAccountId}`, "DELETE");
+      setAccounts((previous) => previous.filter((a) => a.id !== pendingDeleteAccountId));
+      setSelectedAccountIds((previous) => previous.filter((id) => id !== pendingDeleteAccountId));
       setIsDeleteConfirmOpen(false);
       setPendingDeleteAccountId(null);
       toast.success("Account berhasil dihapus.");
@@ -279,45 +256,34 @@ export function useAccounts() {
   }
 
   async function confirmDeleteSelected(): Promise<void> {
-    if (selectedAccountIds.length === 0) {
-      return;
-    }
+    if (selectedAccountIds.length === 0) return;
+
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
-      const failures: string[] = [];
-      const deletedIds: number[] = [];
-      for (const accountId of selectedAccountIds) {
-        try {
-          markRowAction(accountId, "delete");
-          await deleteById(accountId);
-          deletedIds.push(accountId);
-        } catch (error) {
-          failures.push(
-            error instanceof Error
-              ? `ID ${accountId}: ${error.message}`
-              : `ID ${accountId}: unknown error`,
-          );
-        } finally {
-          clearRowAction(accountId);
-        }
-      }
+      await apiRequest<void>("/v1/accounts/bulk-delete", "POST", { ids: selectedAccountIds });
+      setAccounts((previous) => previous.filter((a) => !selectedAccountIds.includes(a.id)));
+      setSelectedAccountIds([]);
       setIsBulkDeleteConfirmOpen(false);
-      for (const deletedId of deletedIds) {
-        removeAccountFromState(deletedId);
-      }
-      if (failures.length > 0) {
-        setErrorMessage(`Sebagian delete gagal. ${failures.join(" | ")}`);
-        toast.warning(`Delete selesai dengan ${failures.length} kegagalan.`);
-      } else {
-        toast.success(`Berhasil menghapus ${deletedIds.length} account.`);
-      }
+      toast.success(`${selectedCount} accounts berhasil dihapus.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Bulk delete account gagal.");
+      toast.error("Gagal menghapus selected accounts.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function markRowAction(accountId: number, action: string): void {
+    setPendingRowActions((previous) => ({ ...previous, [accountId]: action }));
+  }
+
+  function clearRowAction(accountId: number): void {
+    setPendingRowActions((previous) => {
+      const next = { ...previous };
+      delete next[accountId];
+      return next;
+    });
   }
 
   return {
@@ -336,14 +302,14 @@ export function useAccounts() {
     setIsDeleteConfirmOpen,
     isBulkDeleteConfirmOpen,
     setIsBulkDeleteConfirmOpen,
+    filters,
+    setFilters,
     singleForm,
     setSingleForm,
     bulkForm,
     setBulkForm,
     editForm,
     setEditForm,
-    filters,
-    setFilters,
     isSubmitting,
     totalReseller,
     selectedCount,

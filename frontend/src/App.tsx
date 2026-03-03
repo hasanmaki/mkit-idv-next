@@ -13,16 +13,16 @@ import { TransactionsPage } from "@/features/transactions/pages/TransactionsPage
 type TabKey =
   | "servers"
   | "orders"
-  | "bindings"
   | "accounts"
+  | "bindings"
   | "orchestration"
   | "transactions";
 
 function resolveTab(raw: string | null): TabKey {
   if (
     raw === "orders" ||
-    raw === "bindings" ||
     raw === "accounts" ||
+    raw === "bindings" ||
     raw === "orchestration" ||
     raw === "transactions"
   ) {

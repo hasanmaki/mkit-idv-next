@@ -1,10 +1,10 @@
-export type AccountStatus = "new" | "active" | "exhausted" | "disabled";
+export type AccountStatus = "NEW" | "ACTIVE" | "EXHAUSTED" | "DISABLED";
 
 export type Account = {
   id: number;
+  order_id: number;
   msisdn: string;
   email: string;
-  batch_id: string;
   pin: string | null;
   status: AccountStatus;
   is_reseller: boolean;
@@ -17,105 +17,69 @@ export type Account = {
   updated_at: string;
 };
 
-export type AccountCreateSinglePayload = {
+export type AccountCreatePayload = {
+  order_id: number;
   msisdn: string;
   email: string;
-  batch_id: string;
-  pin: string | null;
-  notes: string | null;
-};
-
-export type AccountCreateBulkPayload = {
-  msisdns: string[];
-  email: string;
-  batch_id: string;
-  pin: string | null;
+  pin?: string | null;
+  is_reseller?: boolean;
 };
 
 export type AccountUpdatePayload = {
   email?: string | null;
   pin?: string | null;
+  is_reseller?: boolean;
   notes?: string | null;
-  status?: AccountStatus | null;
-  is_reseller?: boolean | null;
-  last_device_id?: string | null;
 };
 
-export type AccountDeletePayload = {
-  id?: number;
-  msisdn?: string;
-  batch_id?: string;
-};
-
-export type AccountSingleForm = {
+export type AccountFilters = {
+  order_id: number | null;
   msisdn: string;
   email: string;
+  status: AccountStatus | "";
   batch_id: string;
-  pin: string;
-  notes: string;
+  is_reseller: string;
 };
 
-export const defaultAccountSingleForm: AccountSingleForm = {
+export const defaultAccountFilters: AccountFilters = {
+  order_id: null,
   msisdn: "",
   email: "",
+  status: "",
   batch_id: "",
-  pin: "",
-  notes: "",
+  is_reseller: "",
+};
+
+export const ACCOUNT_STATUSES: AccountStatus[] = [
+  "NEW",
+  "ACTIVE",
+  "EXHAUSTED",
+  "DISABLED",
+];
+
+export type AccountSingleForm = {
+  order_id: number;
+  msisdn: string;
+  batch_id: string;
+  email: string;
+  pin: string;
+  notes: string;
+  is_reseller: boolean;
 };
 
 export type AccountBulkForm = {
+  order_id: number;
   msisdns_text: string;
-  email: string;
   batch_id: string;
   pin: string;
-};
-
-export const defaultAccountBulkForm: AccountBulkForm = {
-  msisdns_text: "",
-  email: "",
-  batch_id: "",
-  pin: "",
+  email: string;
 };
 
 export type AccountEditForm = {
   email: string;
   pin: string;
-  notes: string;
   status: AccountStatus;
-  is_reseller: boolean;
   last_device_id: string;
-};
-
-export function toAccountEditForm(account: Account): AccountEditForm {
-  return {
-    email: account.email,
-    pin: account.pin ?? "",
-    notes: account.notes ?? "",
-    status: account.status,
-    is_reseller: account.is_reseller,
-    last_device_id: account.last_device_id ?? "",
-  };
-}
-
-export const ACCOUNT_STATUSES: AccountStatus[] = [
-  "new",
-  "active",
-  "exhausted",
-  "disabled",
-];
-
-export type AccountFilters = {
-  msisdn: string;
-  email: string;
-  batch_id: string;
-  status: AccountStatus | "";
-  is_reseller: "" | "true" | "false";
-};
-
-export const defaultAccountFilters: AccountFilters = {
-  msisdn: "",
-  email: "",
-  batch_id: "",
-  status: "",
-  is_reseller: "",
+  notes: string;
+  is_reseller: boolean;
 };

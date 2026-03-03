@@ -1,4 +1,4 @@
-import { Loader2, MoreHorizontal, PenSquare, ServerCog, Trash2, Users, UserPlus } from "lucide-react";
+import { Loader2, MoreHorizontal, PenSquare, ServerCog, Trash2, Users, UserPlus, Eye } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ type OrdersTableProps = {
   onToggleOrderStatus: (order: Order) => Promise<void>;
   onOpenDeleteConfirm: (orderId: number) => void;
   onAddAccount: (orderId: number) => void;
+  onNavigateToAccounts: (orderId: number) => void;
 };
 
 export function OrdersTable({
@@ -45,6 +46,7 @@ export function OrdersTable({
   onToggleOrderStatus,
   onOpenDeleteConfirm,
   onAddAccount,
+  onNavigateToAccounts,
 }: OrdersTableProps) {
   return (
     <div className="min-h-[440px] overflow-x-auto">
@@ -122,6 +124,10 @@ export function OrdersTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onNavigateToAccounts(order.id)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Accounts ({order.account_count})
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onAddAccount(order.id)}>
                           <UserPlus className="mr-2 h-4 w-4" />
                           Add Account

@@ -57,6 +57,11 @@ export function OrdersPage() {
     setIsAddAccountsDialogOpen(true);
   };
 
+  const handleNavigateToAccounts = (orderId: number) => {
+    // Navigate to Accounts page with order filter
+    window.location.href = `/?tab=accounts&order_id=${orderId}`;
+  };
+
   const handleAccountAdded = () => {
     // Refresh orders to update account count
     void vm.loadOrders();
@@ -135,6 +140,7 @@ export function OrdersPage() {
             onToggleOrderStatus={vm.toggleOrderStatus}
             onOpenDeleteConfirm={vm.openDeleteConfirm}
             onAddAccount={handleAddAccount}
+            onNavigateToAccounts={handleNavigateToAccounts}
           />
         </CardContent>
       </Card>

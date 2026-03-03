@@ -7,6 +7,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db_session
+from app.services.accounts.service import AccountService
 from app.services.bindings.service import BindingService
 from app.services.orders.service import OrderService
 from app.services.servers.service import ServerService
@@ -43,3 +44,14 @@ def get_binding_service(
         service: BindingService = Depends(get_binding_service)
     """
     return BindingService(session)
+
+
+def get_account_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> AccountService:
+    """Get account service instance.
+
+    Usage:
+        service: AccountService = Depends(get_account_service)
+    """
+    return AccountService(session)

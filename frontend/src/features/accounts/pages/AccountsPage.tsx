@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 
 import {
@@ -61,6 +62,15 @@ function StatCard({ title, value }: { title: string; value: string }) {
 
 export function AccountsPage() {
   const vm = useAccounts();
+
+  // Read order_id from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("order_id");
+    if (orderId) {
+      vm.setFilters((prev) => ({ ...prev, order_id: Number(orderId) }));
+    }
+  }, []);
 
   return (
     <section className="space-y-6">
