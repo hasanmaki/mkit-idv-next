@@ -1,11 +1,18 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Binding } from "../types";
 
 type BindAccountFormFieldsProps = {
   form: {
-    session_id: number;
+    order_id: number;
     server_id: number;
     account_id: number;
     priority: number;
@@ -14,7 +21,7 @@ type BindAccountFormFieldsProps = {
   };
   onChange: React.Dispatch<
     React.SetStateAction<{
-      session_id: number;
+      order_id: number;
       server_id: number;
       account_id: number;
       priority: number;
@@ -22,34 +29,89 @@ type BindAccountFormFieldsProps = {
       notes: string;
     }>
   >;
-  sessions?: { id: number; name: string }[];
-  servers?: { id: number; name: string }[];
+  orders: { id: number; name: string }[];
+  servers: { id: number; name: string; port: number }[];
+  accounts: { id: number; msisdn: string }[];
+  isLoadingOptions: boolean;
+  onOrderChange: (orderId: number) => void;
 };
 
 export function BindAccountFormFields({
   form,
   onChange,
-  sessions = [],
+  orders = [],
   servers = [],
+  accounts = [],
+  isLoadingOptions,
+  onOrderChange,
 }: BindAccountFormFieldsProps) {
   return (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2">
-        <Label htmlFor="session_id">Session</Label>
-        <Input
-          id="session_id"
-          type="number"
-          value={form.session_id}
-          onChange={(event) =>
-            onChange((prev) => ({ ...prev, session_id: Number(event.target.value) }))
+        <Label htmlFor="order_id">Order</Label>
+        <Select
+          value={form.order_id.toString()}
+          onValueChange={(value) => onOrderChange(Number(value))}
+          disabled={isLoadingOptions}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select order" />
+          </SelectTrigger>
+          <SelectContent>
+            {orders.map((order) => (
+              <SelectItem key={order.id} value={order.id.toString()}>
+                {order.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="account_id">Account (MSISDN)</Label>
+        <Select
+          value={form.account_id.toString()}
+          onValueChange={(value) =>
+            onChange((prev) => ({ ...prev, account_id: Number(value) }))
           }
-          placeholder="Session ID"
-        />
-        {sessions.length > 0 && (
+          disabled={isLoadingOptions || accounts.length === 0}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select account" />
+          </SelectTrigger>
+          <SelectContent>
+            {accounts.map((account) => (
+              <SelectItem key={account.id} value={account.id.toString()}>
+                {account.msisdn}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {accounts.length === 0 && form.order_id > 0 && (
           <p className="text-xs text-muted-foreground">
-            Available: {sessions.map((s) => s.name).join(", ")}
+            No accounts for this order
           </p>
         )}
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="server_id">Server</Label>
+        <Select
+          value={form.server_id.toString()}
+          onValueChange={(value) =>
+            onChange((prev) => ({ ...prev, server_id: Number(value) }))
+          }
+          disabled={isLoadingOptions}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select server" />
+          </SelectTrigger>
+          <SelectContent>
+            {servers.map((server) => (
+              <SelectItem key={server.id} value={server.id.toString()}>
+                {server.name} (Port {server.port})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="server_id">Server</Label>
@@ -120,7 +182,7 @@ export function BindAccountFormFields({
 
 type BulkBindFormFieldsProps = {
   form: {
-    session_id: number;
+    order_id: number;
     server_id: number;
     account_ids: string | number[];
     priority: number;
@@ -129,7 +191,7 @@ type BulkBindFormFieldsProps = {
   };
   onChange: React.Dispatch<
     React.SetStateAction<{
-      session_id: number;
+      order_id: number;
       server_id: number;
       account_ids: string | number[];
       priority: number;
@@ -143,15 +205,15 @@ export function BulkBindFormFields({ form, onChange }: BulkBindFormFieldsProps) 
   return (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2">
-        <Label htmlFor="bulk-session_id">Session</Label>
+        <Label htmlFor="bulk-order_id">Order</Label>
         <Input
-          id="bulk-session_id"
+          id="bulk-order_id"
           type="number"
-          value={form.session_id}
+          value={form.order_id}
           onChange={(event) =>
-            onChange((prev) => ({ ...prev, session_id: Number(event.target.value) }))
+            onChange((prev) => ({ ...prev, order_id: Number(event.target.value) }))
           }
-          placeholder="Session ID"
+          placeholder="Order ID"
         />
       </div>
       <div className="grid gap-2">

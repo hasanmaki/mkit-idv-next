@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import {
@@ -28,9 +29,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { CreateSessionFormFields, EditSessionFormFields } from "../components/SessionForms";
-import { SessionsTable } from "../components/SessionsTable";
-import { useSessions } from "../hooks/useSessions";
+import { AddAccountsDialog } from "../components/AddAccountsDialog";
+import { CreateOrderFormFields, EditOrderFormFields } from "../components/OrderForms";
+import { OrdersTable } from "../components/OrdersTable";
+import { useOrders } from "../hooks/useOrders";
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
@@ -45,26 +47,32 @@ function StatCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-export function SessionsPage() {
-  const vm = useSessions();
+export function OrdersPage() {
+  const vm = useOrders();
+  const [isAddAccountsDialogOpen, setIsAddAccountsDialogOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+
+  const handleAddAccount = (orderId: number) => {
+    setSelectedOrderId(orderId);
+    setIsAddAccountsDialogOpen(true);
+  };
+
+  const handleAccountAdded = () => {
+    // Refresh orders to update account count
+    void vm.loadOrders();
+  };
 
   return (
     <section className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Session Management</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Order Management</h1>
         <p className="text-sm text-muted-foreground">
-          Kelola session user/operator untuk binding ke multiple servers.
+          Kelola customer orders untuk binding ke multiple servers.
         </p>
       </header>
 
-      {vm.errorMessage ? (
-        <Card className="border-destructive/40 bg-destructive/10">
-          <CardContent className="py-3 text-sm text-destructive">{vm.errorMessage}</CardContent>
-        </Card>
-      ) : null}
-
       <section className="grid gap-3 sm:grid-cols-3">
-        <StatCard title="Total" value={vm.sessions.length.toString()} />
+        <StatCard title="Total" value={vm.orders.length.toString()} />
         <StatCard title="Active" value={vm.totalActive.toString()} />
         <StatCard title="Inactive" value={vm.totalInactive.toString()} />
       </section>
@@ -73,13 +81,13 @@ export function SessionsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Sessions</CardTitle>
+              <CardTitle>Orders</CardTitle>
               <CardDescription>
-                Menampilkan session aktif/non-aktif beserta informasi lengkap.
+                Menampilkan order aktif/non-aktif beserta informasi lengkap.
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => void vm.loadSessions()}>
+              <Button variant="secondary" onClick={() => void vm.loadOrders()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
               <Button
@@ -93,19 +101,19 @@ export function SessionsPage() {
               <Dialog open={vm.isCreateDialogOpen} onOpenChange={vm.setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <Plus className="mr-2 h-4 w-4" /> Add Session
+                    <Plus className="mr-2 h-4 w-4" /> Add Order
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Create Session</DialogTitle>
+                    <DialogTitle>Add Order</DialogTitle>
                     <DialogDescription>
-                      Buat session user/operator baru untuk binding ke servers.
+                      Buat order customer baru dengan email unik.
                     </DialogDescription>
                   </DialogHeader>
-                  <CreateSessionFormFields form={vm.createForm} onChange={vm.setCreateForm} />
+                  <CreateOrderFormFields form={vm.createForm} onChange={vm.setCreateForm} />
                   <DialogFooter>
-                    <Button onClick={() => void vm.createSession()} disabled={vm.isSubmitting}>
+                    <Button onClick={() => void vm.createOrder()} disabled={vm.isSubmitting}>
                       Save
                     </Button>
                   </DialogFooter>
@@ -115,17 +123,18 @@ export function SessionsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <SessionsTable
-            sessions={vm.sessions}
-            selectedSessionIds={vm.selectedSessionIds}
-            isLoadingSessions={vm.isLoadingSessions}
+          <OrdersTable
+            orders={vm.orders}
+            selectedOrderIds={vm.selectedOrderIds}
+            isLoadingOrders={vm.isLoadingOrders}
             allSelected={vm.allSelected}
             pendingRowActions={vm.pendingRowActions}
             onToggleSelectAll={vm.toggleSelectAll}
-            onToggleSelectSession={vm.toggleSelectSession}
-            onOpenEditSession={vm.openEditSession}
-            onToggleSessionStatus={vm.toggleSessionStatus}
+            onToggleSelectOrder={vm.toggleSelectOrder}
+            onOpenEditOrder={vm.openEditOrder}
+            onToggleOrderStatus={vm.toggleOrderStatus}
             onOpenDeleteConfirm={vm.openDeleteConfirm}
+            onAddAccount={handleAddAccount}
           />
         </CardContent>
       </Card>
@@ -133,17 +142,15 @@ export function SessionsPage() {
       <Dialog open={vm.isEditDialogOpen} onOpenChange={vm.setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Session</DialogTitle>
-            <DialogDescription>Update informasi session yang dipilih.</DialogDescription>
+            <DialogTitle>Edit Order</DialogTitle>
+            <DialogDescription>Update informasi order customer.</DialogDescription>
           </DialogHeader>
-          {vm.editForm ? (
-            <EditSessionFormFields form={vm.editForm} onChange={vm.setEditForm} />
-          ) : null}
+          {vm.editForm && <EditOrderFormFields form={vm.editForm} onChange={vm.setEditForm} />}
           <DialogFooter>
             <Button variant="secondary" onClick={() => vm.setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => void vm.saveEditSession()} disabled={vm.isSubmitting}>
+            <Button onClick={() => void vm.saveEditOrder()} disabled={vm.isSubmitting}>
               Save Changes
             </Button>
           </DialogFooter>
@@ -153,9 +160,9 @@ export function SessionsPage() {
       <AlertDialog open={vm.isDeleteConfirmOpen} onOpenChange={vm.setIsDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete session?</AlertDialogTitle>
+            <AlertDialogTitle>Delete order?</AlertDialogTitle>
             <AlertDialogDescription>
-              Session akan dihapus. Ini juga akan menghapus semua binding terkait.
+              Order akan dihapus beserta semua binding terkait. Aksi ini tidak bisa dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -167,28 +174,30 @@ export function SessionsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={vm.isBulkDeleteConfirmOpen}
-        onOpenChange={vm.setIsBulkDeleteConfirmOpen}
-      >
+      <AlertDialog open={vm.isBulkDeleteConfirmOpen} onOpenChange={vm.setIsBulkDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete selected sessions?</AlertDialogTitle>
+            <AlertDialogTitle>Delete selected orders?</AlertDialogTitle>
             <AlertDialogDescription>
-              Total {vm.selectedCount} session akan dihapus beserta semua binding terkait.
+              Total {vm.selectedCount} order akan dihapus beserta semua binding terkait.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={vm.isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void vm.confirmDeleteSelected()}
-              disabled={vm.isSubmitting}
-            >
+            <AlertDialogAction onClick={() => void vm.confirmDeleteSelected()} disabled={vm.isSubmitting}>
               Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Accounts Dialog */}
+      <AddAccountsDialog
+        open={isAddAccountsDialogOpen}
+        onOpenChange={setIsAddAccountsDialogOpen}
+        orderId={selectedOrderId}
+        onSuccess={handleAccountAdded}
+      />
     </section>
   );
 }

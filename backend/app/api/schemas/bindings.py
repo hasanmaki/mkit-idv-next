@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 class BindAccountRequest(BaseModel):
     """Request schema for binding a single account."""
 
-    session_id: int = Field(..., gt=0, description="Session ID")
+    order_id: int = Field(..., gt=0, description="Order ID")
     server_id: int = Field(..., gt=0, description="Server ID")
     account_id: int = Field(..., gt=0, description="Account ID to bind")
     priority: int = Field(1, ge=1, description="Priority (lower = higher priority)")
@@ -19,7 +19,7 @@ class BindAccountRequest(BaseModel):
 class BulkBindRequest(BaseModel):
     """Request schema for bulk binding accounts."""
 
-    session_id: int = Field(..., gt=0, description="Session ID")
+    order_id: int = Field(..., gt=0, description="Order ID")
     server_id: int = Field(..., gt=0, description="Server ID")
     account_ids: list[int] = Field(..., min_length=1, description="List of account IDs")
     priority: int = Field(1, ge=1, description="Priority for all bindings")
@@ -56,7 +56,7 @@ class BindingResponse(BaseModel):
     """Response schema for binding."""
 
     id: int = Field(..., examples=[1])
-    session_id: int = Field(..., examples=[1])
+    order_id: int = Field(..., examples=[1])
     server_id: int = Field(..., examples=[1])
     account_id: int = Field(..., examples=[100])
     step: str = Field(..., examples=["BINDED"])

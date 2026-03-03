@@ -160,6 +160,11 @@ export function BindingsPage() {
                   <BindAccountFormFields
                     form={vm.bindForm}
                     onChange={vm.setBindForm}
+                    orders={vm.orders}
+                    servers={vm.servers}
+                    accounts={vm.accounts}
+                    isLoadingOptions={vm.isLoadingOptions}
+                    onOrderChange={vm.handleOrderChange}
                   />
                   <DialogFooter>
                     <Button onClick={() => vm.bindAccount()} disabled={vm.isSubmitting}>

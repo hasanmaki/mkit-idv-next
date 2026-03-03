@@ -1,5 +1,8 @@
 """Order service layer - business logic with Pydantic DTOs."""
 
+from typing import Any
+
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.orders import (
@@ -9,8 +12,10 @@ from app.api.schemas.orders import (
 )
 from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
+from app.models.accounts import Accounts
 from app.models.orders import Orders
-from app.repos.order_repo import OrderRepository
+from app.models.statuses import AccountStatus
+from app.repos.base import BaseRepository
 
 logger = get_logger("service.orders")
 
@@ -24,10 +29,11 @@ class OrderService:
 
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.repo = OrderRepository(Orders)
+        self.repo = BaseRepository(Orders)
+        self.accounts_repo = BaseRepository(Accounts)
 
     async def create_order(self, data: OrderCreateRequest) -> OrderResponse:
-        """Create a new order."""
+        """Create a new order with optional MSISDN list."""
         log_ctx = {"name": data.name, "email": data.email}
         logger.info("Creating order", extra=log_ctx)
 
@@ -47,16 +53,40 @@ class OrderService:
             self.session,
             name=data.name.strip(),
             email=data.email.lower().strip(),
+            default_pin=data.default_pin,
             description=data.description,
             is_active=data.is_active,
             notes=data.notes,
         )
 
+        # Create accounts if MSISDNs provided
+        if data.msisdns:
+            logger.info(
+                f"Creating {len(data.msisdns)} accounts for order",
+                extra={"order_id": order.id},
+            )
+            for msisdn in data.msisdns:
+                try:
+                    await self.accounts_repo.create(
+                        self.session,
+                        order_id=order.id,
+                        msisdn=msisdn.strip(),
+                        email=data.email.lower().strip(),
+                        pin=data.default_pin,
+                        status=AccountStatus.NEW,
+                        is_reseller=False,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to create account for MSISDN {msisdn}: {str(e)}",
+                        extra={"msisdn": msisdn, "order_id": order.id},
+                    )
+
         logger.info("Order created successfully", extra={"order_id": order.id})
         return OrderResponse.model_validate(order)
 
     async def get_order(self, order_id: int) -> OrderResponse:
-        """Get an order by ID."""
+        """Get an order by ID with account count."""
         order = await self.repo.get(self.session, order_id)
         if not order:
             raise AppNotFoundError(
@@ -71,16 +101,34 @@ class OrderService:
         skip: int = 0,
         limit: int = 100,
         is_active: bool | None = None,
-    ) -> list[OrderResponse]:
-        """List orders with optional filtering."""
-        filters = {}
+    ) -> list[dict]:
+        """List orders with account count."""
+        from sqlalchemy import func
+        
+        filters = []
         if is_active is not None:
-            filters["is_active"] = is_active
+            filters.append(Orders.is_active == is_active)
 
-        orders = await self.repo.get_multi(
-            self.session, skip=skip, limit=limit, **filters
+        # Query orders with account count
+        stmt = (
+            sa.select(Orders, func.count(Accounts.id).label('account_count'))
+            .outerjoin(Accounts, Orders.id == Accounts.order_id)
+            .where(*filters)
+            .group_by(Orders.id)
+            .offset(skip)
+            .limit(limit)
         )
-        return [OrderResponse.model_validate(o) for o in orders]
+        
+        result = await self.session.execute(stmt)
+        rows = result.all()
+        
+        return [
+            {
+                **{c.name: getattr(row.Orders, c.name) for c in Orders.__table__.columns},
+                'account_count': row.account_count,
+            }
+            for row in rows
+        ]
 
     async def update_order(
         self,

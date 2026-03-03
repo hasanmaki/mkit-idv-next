@@ -24,8 +24,14 @@ export function useBindings() {
   const [isBalanceDialogOpen, setIsBalanceDialogOpen] = useState(false);
   const [isReleaseConfirmOpen, setIsReleaseConfirmOpen] = useState(false);
 
+  // Dropdown options
+  const [orders, setOrders] = useState<{ id: number; name: string }[]>([]);
+  const [servers, setServers] = useState<{ id: number; name: string; port: number }[]>([]);
+  const [accounts, setAccounts] = useState<{ id: number; msisdn: string }[]>([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+
   const [bindForm, setBindForm] = useState({
-    session_id: 0,
+    order_id: 0,
     server_id: 0,
     account_id: 0,
     priority: 1,
@@ -34,7 +40,7 @@ export function useBindings() {
   });
 
   const [bulkBindForm, setBulkBindForm] = useState({
-    session_id: 0,
+    order_id: 0,
     server_id: 0,
     account_ids: "" as string | number[],
     priority: 1,
@@ -48,7 +54,38 @@ export function useBindings() {
 
   useEffect(() => {
     void loadBindings();
+    void loadDropdownOptions();
   }, []);
+
+  async function loadDropdownOptions(): Promise<void> {
+    try {
+      setIsLoadingOptions(true);
+      // Load orders and servers for dropdowns
+      const [ordersData, serversData] = await Promise.all([
+        apiRequest<{ id: number; name: string }[]>("/v1/orders?selectable=true", "GET").catch(() => []),
+        apiRequest<{ id: number; name: string; port: number }[]>("/v1/bindings/servers/active", "GET").catch(() => []),
+      ]);
+      setOrders(ordersData);
+      setServers(serversData);
+    } catch (error) {
+      console.error("Failed to load dropdown options:", error);
+    } finally {
+      setIsLoadingOptions(false);
+    }
+  }
+
+  async function loadAccountsForOrder(orderId: number): Promise<void> {
+    try {
+      const accountsData = await apiRequest<{ id: number; msisdn: string }[]>(
+        `/v1/bindings/accounts/by-order/${orderId}`,
+        "GET",
+      );
+      setAccounts(accountsData);
+    } catch (error) {
+      console.error("Failed to load accounts:", error);
+      setAccounts([]);
+    }
+  }
 
   function markRowAction(bindingId: number, action: string): void {
     setPendingRowActions((previous) => ({ ...previous, [bindingId]: action }));
@@ -99,7 +136,7 @@ export function useBindings() {
       setErrorMessage(null);
 
       const payload: BindAccountPayload = {
-        session_id: bindForm.session_id,
+        order_id: bindForm.order_id,
         server_id: bindForm.server_id,
         account_id: bindForm.account_id,
         priority: bindForm.priority,
@@ -109,13 +146,14 @@ export function useBindings() {
 
       const created = await apiRequest<Binding>("/v1/bindings", "POST", payload);
       setBindForm({
-        session_id: 0,
+        order_id: 0,
         server_id: 0,
         account_id: 0,
         priority: 1,
         description: "",
         notes: "",
       });
+      setAccounts([]); // Clear accounts
       setIsBindDialogOpen(false);
       upsertBinding(created);
       toast.success("Binding berhasil dibuat.");
@@ -124,6 +162,15 @@ export function useBindings() {
       toast.error(error instanceof Error ? error.message : "Gagal membuat binding.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  function handleOrderChange(orderId: number): void {
+    setBindForm((prev) => ({ ...prev, order_id: orderId }));
+    if (orderId > 0) {
+      void loadAccountsForOrder(orderId);
+    } else {
+      setAccounts([]);
     }
   }
 
@@ -138,7 +185,7 @@ export function useBindings() {
           : bulkBindForm.account_ids;
 
       const payload: BulkBindPayload = {
-        session_id: bulkBindForm.session_id,
+        order_id: bulkBindForm.order_id,
         server_id: bulkBindForm.server_id,
         account_ids: accountIds,
         priority: bulkBindForm.priority,
@@ -148,7 +195,7 @@ export function useBindings() {
 
       const created = await apiRequest<Binding[]>("/v1/bindings/bulk", "POST", payload);
       setBulkBindForm({
-        session_id: 0,
+        order_id: 0,
         server_id: 0,
         account_ids: "",
         priority: 1,
@@ -317,12 +364,17 @@ export function useBindings() {
     setIsBalanceDialogOpen,
     isReleaseConfirmOpen,
     setIsReleaseConfirmOpen,
+    isLoadingOptions,
+    orders,
+    servers,
+    accounts,
     bindForm,
     setBindForm,
     bulkBindForm,
     setBulkBindForm,
     isSubmitting,
     activeBindingId,
+    pendingReleaseBindingId,
     loadBindings,
     bindAccount,
     bulkBindAccounts,
@@ -334,5 +386,6 @@ export function useBindings() {
     openOTPDialog,
     openBalanceDialog,
     openReleaseConfirm,
+    handleOrderChange,
   };
 }

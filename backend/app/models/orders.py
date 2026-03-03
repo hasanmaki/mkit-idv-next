@@ -7,10 +7,10 @@ from app.models.mixins import Base, TimestampMixin
 
 
 class Orders(Base, TimestampMixin):
-    """Order record - merepresentasikan customer order yang dapat memiliki multiple bindings.
+    """Order record - merepresentasikan customer order yang dapat memiliki multiple accounts.
 
     Order adalah entitas utama yang mewakili customer,
-    sedangkan Bindings mengikat order ke server dan account tertentu.
+    dengan daftar MSISDN yang akan di-bind ke server.
     """
 
     __tablename__ = "orders"
@@ -20,6 +20,9 @@ class Orders(Base, TimestampMixin):
     # Customer identity
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+
+    # Default credentials for accounts
+    default_pin: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Order status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

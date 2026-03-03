@@ -6,13 +6,13 @@ import { ErrorBoundary } from "@/components/error";
 import { AccountsPage } from "@/features/accounts/pages/AccountsPage";
 import { BindingsPage } from "@/features/bindings/pages/BindingsPage";
 import { OrchestrationPage } from "@/features/orchestration/pages/OrchestrationPage";
+import { OrdersPage } from "@/features/orders/pages/OrdersPage";
 import { ServersPage } from "@/features/servers/pages/ServersPage";
-import { SessionsPage } from "@/features/sessions/pages/SessionsPage";
 import { TransactionsPage } from "@/features/transactions/pages/TransactionsPage";
 
 type TabKey =
   | "servers"
-  | "sessions"
+  | "orders"
   | "bindings"
   | "accounts"
   | "orchestration"
@@ -20,7 +20,7 @@ type TabKey =
 
 function resolveTab(raw: string | null): TabKey {
   if (
-    raw === "sessions" ||
+    raw === "orders" ||
     raw === "bindings" ||
     raw === "accounts" ||
     raw === "orchestration" ||
@@ -59,8 +59,8 @@ function App() {
             <Button variant={tab === "servers" ? "default" : "secondary"} onClick={() => setTab("servers")}>
               Servers
             </Button>
-            <Button variant={tab === "sessions" ? "default" : "secondary"} onClick={() => setTab("sessions")}>
-              Sessions
+            <Button variant={tab === "orders" ? "default" : "secondary"} onClick={() => setTab("orders")}>
+              Orders
             </Button>
             <Button variant={tab === "bindings" ? "default" : "secondary"} onClick={() => setTab("bindings")}>
               Bindings
@@ -84,7 +84,7 @@ function App() {
         </header>
 
         {tab === "servers" ? <ServersPage /> : null}
-        {tab === "sessions" ? <SessionsPage /> : null}
+        {tab === "orders" ? <OrdersPage /> : null}
         {tab === "bindings" ? <BindingsPage /> : null}
         {tab === "accounts" ? <AccountsPage /> : null}
         {tab === "orchestration" ? <OrchestrationPage /> : null}

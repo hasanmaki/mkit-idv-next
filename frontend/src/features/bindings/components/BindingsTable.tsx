@@ -94,7 +94,7 @@ export function BindingsTable({
               return (
                 <TableRow key={binding.id}>
                   <TableCell>#{binding.id}</TableCell>
-                  <TableCell>#{binding.session_id}</TableCell>
+                  <TableCell>#{binding.order_id}</TableCell>
                   <TableCell>#{binding.server_id}</TableCell>
                   <TableCell className="font-medium">#{binding.account_id}</TableCell>
                   <TableCell>

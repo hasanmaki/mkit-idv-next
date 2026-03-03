@@ -1,6 +1,6 @@
 export type Binding = {
   id: number;
-  session_id: number;
+  order_id: number;
   server_id: number;
   account_id: number;
   step: "BINDED" | "REQUEST_OTP" | "VERIFY_OTP" | "VERIFIED" | "LOGGED_OUT";
@@ -17,7 +17,7 @@ export type Binding = {
 };
 
 export type BindAccountPayload = {
-  session_id: number;
+  order_id: number;
   server_id: number;
   account_id: number;
   priority?: number;
@@ -26,7 +26,7 @@ export type BindAccountPayload = {
 };
 
 export type BulkBindPayload = {
-  session_id: number;
+  order_id: number;
   server_id: number;
   account_ids: number[];
   priority?: number;

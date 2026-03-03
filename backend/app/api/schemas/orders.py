@@ -20,6 +20,18 @@ class OrderCreateRequest(BaseModel):
         description="Customer email (unique identifier)",
         examples=["operator@example.com", "admin@company.com"],
     )
+    default_pin: str | None = Field(
+        None,
+        min_length=4,
+        max_length=10,
+        description="Default PIN for all accounts in this order",
+        examples=["1234", "0000"],
+    )
+    msisdns: list[str] | None = Field(
+        None,
+        description="List of MSISDNs to create as accounts for this order",
+        examples=[["081234567890", "081234567891"]],
+    )
     description: str | None = Field(
         None,
         max_length=255,
@@ -60,6 +72,7 @@ class OrderResponse(BaseModel):
     id: int = Field(..., examples=[1])
     name: str = Field(..., examples=["Operator 1"])
     email: str = Field(..., examples=["operator@example.com"])
+    default_pin: str | None = Field(None, examples=["1234"])
     description: str | None = Field(None, examples=["Main customer order"])
     is_active: bool = Field(..., examples=[True])
     notes: str | None = Field(None, examples=["Primary order"])
