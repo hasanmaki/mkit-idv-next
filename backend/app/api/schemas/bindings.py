@@ -29,6 +29,20 @@ class BulkBindRequest(BaseModel):
     notes: str | None = Field(None, max_length=500)
 
 
+class SmartBindItem(BaseModel):
+    """Pair of server port and account MSISDN for smart binding."""
+    server_port: int = Field(..., description="Server port (e.g. 9901)")
+    msisdn: str = Field(..., description="Account phone number (e.g. 0812345678)")
+
+
+class SmartBindRequest(BaseModel):
+    """Request schema for pairwise smart binding via port:msisdn format."""
+    order_id: int = Field(..., gt=0, description="Order ID this binding belongs to")
+    mappings: list[SmartBindItem] = Field(..., min_length=1, description="List of port:msisdn pairs")
+    is_reseller: bool = Field(False, description="Whether these are reseller accounts")
+    priority: int = Field(1, description="Priority for these bindings")
+
+
 class RequestOTPRequest(BaseModel):
     """Request schema for requesting OTP."""
 

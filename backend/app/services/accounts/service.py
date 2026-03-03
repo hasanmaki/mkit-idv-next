@@ -184,16 +184,16 @@ class AccountService:
         # Apply filters
         if order_id is not None:
             stmt = stmt.where(Accounts.order_id == order_id)
-        
+
         if msisdn:
             stmt = stmt.where(Accounts.msisdn.like(f"%{msisdn.strip()}%"))
-            
+
         if email:
             stmt = stmt.where(Accounts.email.like(f"%{email.strip()}%"))
-            
+
         if is_active is not None:
             stmt = stmt.where(Accounts.is_active == is_active)
-            
+
         if is_processed is not None:
             stmt = stmt.where(Accounts.is_processed == is_processed)
 

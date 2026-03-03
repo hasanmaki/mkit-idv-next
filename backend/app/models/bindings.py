@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, Boolean
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.mixins import Base, TimestampMixin
@@ -51,7 +51,7 @@ class Bindings(Base, TimestampMixin):
 
     # Workflow Flags
     is_reseller: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    
+
     # Session / Security Data
     token_location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)

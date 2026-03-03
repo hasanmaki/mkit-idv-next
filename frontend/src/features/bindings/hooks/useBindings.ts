@@ -64,6 +64,13 @@ export function useBindings() {
     notes: "",
   });
 
+  const [smartBindForm, setSmartBindForm] = useState({
+    order_id: 0,
+    paste_text: "",
+    is_reseller: false,
+    priority: 1,
+  });
+
   const [editForm, setEditForm] = useState({
     server_id: 0,
     is_reseller: false,
@@ -225,9 +232,54 @@ export function useBindings() {
         notes: "",
       });
       setIsBulkBindDialogOpen(false);
-      // Refresh list to be sure
       void loadBindings();
       toast.success(`${created.length} bindings berhasil dibuat.`);
+    } catch (error) {
+      handleError(error, { displayMode: "dialog" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function smartBindAccounts(): Promise<void> {
+    try {
+      setIsSubmitting(true);
+      
+      // Parse text format: "port:msisdn;" or newlines
+      const mappings: { server_port: number; msisdn: string }[] = [];
+      const lines = smartBindForm.paste_text.split(/[;|\n]+/).filter(Boolean);
+      
+      for (const line of lines) {
+        const parts = line.split(':').map(s => s.trim());
+        if (parts.length === 2) {
+          mappings.push({
+            server_port: parseInt(parts[0], 10),
+            msisdn: parts[1]
+          });
+        }
+      }
+
+      if (mappings.length === 0) {
+        throw new Error("Format tidak valid. Gunakan format port:msisdn;");
+      }
+
+      const payload = {
+        order_id: smartBindForm.order_id,
+        mappings,
+        is_reseller: smartBindForm.is_reseller,
+        priority: smartBindForm.priority,
+      };
+
+      await apiRequest<Binding[]>("/v1/bindings/smart", "POST", payload);
+      setSmartBindForm({
+        order_id: 0,
+        paste_text: "",
+        is_reseller: false,
+        priority: 1,
+      });
+      setIsBulkBindDialogOpen(false);
+      void loadBindings();
+      toast.success(`Smart Bind: ${mappings.length} antrean berhasil dibuat.`);
     } catch (error) {
       handleError(error, { displayMode: "dialog" });
     } finally {
@@ -365,8 +417,9 @@ export function useBindings() {
       setIsSubmitting(true);
       markRowAction(bindingId, "release");
 
-      // Backend now performs hard delete to free the account
+      // Send empty object body {} instead of nothing
       await apiRequest(`/v1/bindings/${bindingId}/release`, "POST", {});
+      
       removeBindingFromState(bindingId);
       setIsReleaseConfirmOpen(false);
       setPendingReleaseBindingId(null);
@@ -434,6 +487,8 @@ export function useBindings() {
     setBindForm,
     bulkBindForm,
     setBulkBindForm,
+    smartBindForm,
+    setSmartBindForm,
     editForm,
     setEditForm,
     isSubmitting,
@@ -442,6 +497,7 @@ export function useBindings() {
     loadBindings,
     bindAccount,
     bulkBindAccounts,
+    smartBindAccounts,
     updateBinding,
     requestOTP,
     verifyOTP,

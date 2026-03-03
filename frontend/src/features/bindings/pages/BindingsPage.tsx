@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Users, Link2 } from "lucide-react";
+import { Plus, RefreshCw, Users, Link2, ClipboardPaste, ListOrdered } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -28,6 +28,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { ErrorDialog } from "@/components/error/ErrorDialog";
 
 import {
@@ -124,25 +130,92 @@ export function BindingsPage() {
                     <Users className="mr-2 h-4 w-4" /> Bulk Bind
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Bulk Bind Akun</DialogTitle>
                     <DialogDescription>
-                      Hubungkan banyak akun ke satu server sekaligus.
+                      Pilih metode input untuk menghubungkan banyak akun sekaligus.
                     </DialogDescription>
                   </DialogHeader>
-                  <BulkBindFormFields
-                    form={vm.bulkBindForm}
-                    onChange={vm.setBulkBindForm}
-                    orders={vm.orders}
-                    servers={vm.servers}
-                    isLoadingOptions={vm.isLoadingOptions}
-                  />
-                  <DialogFooter>
-                    <Button onClick={() => void vm.bulkBindAccounts()} disabled={vm.isSubmitting}>
-                      Jalankan Bulk Bind
-                    </Button>
-                  </DialogFooter>
+                  
+                  <Tabs defaultValue="standard" className="w-full mt-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="standard">
+                        <ListOrdered className="mr-2 h-4 w-4" /> Standard Bulk
+                      </TabsTrigger>
+                      <TabsTrigger value="smart">
+                        <ClipboardPaste className="mr-2 h-4 w-4" /> Smart Paste
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="standard" className="space-y-4 pt-4">
+                      <BulkBindFormFields
+                        form={vm.bulkBindForm}
+                        onChange={vm.setBulkBindForm}
+                        orders={vm.orders}
+                        servers={vm.servers}
+                        isLoadingOptions={vm.isLoadingOptions}
+                      />
+                      <Button className="w-full" onClick={() => void vm.bulkBindAccounts()} disabled={vm.isSubmitting}>
+                        Jalankan Bulk Bind
+                      </Button>
+                    </TabsContent>
+                    
+                    <TabsContent value="smart" className="space-y-4 pt-4">
+                      <div className="grid gap-4 py-2">
+                        <div className="grid gap-2">
+                          <Label>Pilih Session / Order</Label>
+                          <Select
+                            value={vm.smartBindForm.order_id.toString()}
+                            onValueChange={(v) => vm.setSmartBindForm(p => ({ ...p, order_id: Number(v) }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Session Target" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vm.orders.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="grid gap-2">
+                          <Label>Paste Data (port:msisdn;)</Label>
+                          <Textarea
+                            placeholder="9901:0812345678;&#10;9901:0812345679;&#10;9902:0812345680;"
+                            rows={6}
+                            className="font-mono text-xs"
+                            value={vm.smartBindForm.paste_text}
+                            onChange={(e) => vm.setSmartBindForm(p => ({ ...p, paste_text: e.target.value }))}
+                          />
+                          <p className="text-[10px] text-muted-foreground italic">
+                            Pisahkan dengan titik koma (;) atau baris baru. Format: port:nomorhp;
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-md border p-3">
+                          <div className="space-y-0.5">
+                            <Label>Set as Reseller</Label>
+                          </div>
+                          <Switch
+                            checked={vm.smartBindForm.is_reseller}
+                            onCheckedChange={(c) => vm.setSmartBindForm(p => ({ ...p, is_reseller: c }))}
+                          />
+                        </div>
+                        
+                        <div className="grid gap-2">
+                          <Label>Priority</Label>
+                          <Input
+                            type="number"
+                            value={vm.smartBindForm.priority}
+                            onChange={(e) => vm.setSmartBindForm(p => ({ ...p, priority: Number(e.target.value) }))}
+                          />
+                        </div>
+                      </div>
+                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={() => void vm.smartBindAccounts()} disabled={vm.isSubmitting}>
+                        Execute Smart Bind
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
                 </DialogContent>
               </Dialog>
 

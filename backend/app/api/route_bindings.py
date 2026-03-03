@@ -13,6 +13,7 @@ from app.api.schemas.bindings import (
     BulkBindRequest,
     ReleaseBindingRequest,
     RequestOTPRequest,
+    SmartBindRequest,
     VerifyOTPRequest,
     WorkflowStepUpdateRequest,
 )
@@ -56,14 +57,7 @@ async def bind_account(
     payload: BindAccountRequest,
     service: BindingService = Depends(get_binding_service),
 ) -> BindingResponse:
-    """Bind a single account to a server for an order.
-
-    - **order_id**: Order that owns this binding
-    - **server_id**: Server to bind to
-    - **account_id**: Account to bind (must not be already bound)
-    - **is_reseller**: Whether it's a reseller account
-    - **priority**: Priority for queue management (lower = higher priority)
-    """
+    """Bind a single account to a server for an order."""
     return await service.bind_account(payload)
 
 
@@ -76,15 +70,21 @@ async def bulk_bind_accounts(
     payload: BulkBindRequest,
     service: BindingService = Depends(get_binding_service),
 ) -> list[BindingResponse]:
-    """Bind multiple accounts to a server for an order.
-
-    - **order_id**: Order that owns these bindings
-    - **server_id**: Server to bind to
-    - **account_ids**: List of account IDs to bind
-    - **is_reseller**: Whether they are reseller accounts
-    - **priority**: Priority for all bindings
-    """
+    """Bind multiple accounts to a single server."""
     return await service.bulk_bind_accounts(payload)
+
+
+@router.post(
+    "/smart",
+    response_model=list[BindingResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def smart_bind_accounts(
+    payload: SmartBindRequest,
+    service: BindingService = Depends(get_binding_service),
+) -> list[BindingResponse]:
+    """Pairwise binding using port:msisdn mapping."""
+    return await service.smart_bind_accounts(payload)
 
 
 @router.get(
@@ -98,13 +98,7 @@ async def list_bindings(
     is_active: bool | None = None,
     service: BindingService = Depends(get_binding_service),
 ) -> list[BindingResponse]:
-    """List bindings with optional filtering.
-
-    - **skip**: Number of records to skip (pagination)
-    - **limit**: Maximum records to return (max 100)
-    - **order_id**: Filter by order ID (optional)
-    - **is_active**: Filter by active status (optional)
-    """
+    """List bindings with optional filtering."""
     return await service.list_bindings(
         skip=skip, limit=limit, order_id=order_id, is_active=is_active
     )
@@ -144,14 +138,7 @@ async def update_binding(
     payload: dict,
     service: BindingService = Depends(get_binding_service),
 ) -> BindingResponse:
-    """Update binding properties.
-
-    Allows changing:
-    - **server_id**: Change the IDV server instance
-    - **priority**: Adjust queue order
-    - **is_reseller**: Toggle reseller mode
-    - **description / notes**: Update metadata
-    """
+    """Update binding properties."""
     return await service.update_binding(binding_id, payload)
 
 
@@ -165,13 +152,7 @@ async def update_workflow_step(
     payload: WorkflowStepUpdateRequest,
     service: BindingService = Depends(get_binding_service),
 ) -> BindingResponse:
-    """Manually update workflow step and metadata.
-
-    This is a generic endpoint for any workflow transition like:
-    - BINDED -> REQUEST_OTP
-    - VERIFIED -> CHECK_BALANCE
-    - CHECK_BALANCE -> COMPLETED
-    """
+    """Manually update workflow step and metadata."""
     return await service.update_workflow_step(binding_id, payload)
 
 
@@ -182,11 +163,11 @@ async def update_workflow_step(
 )
 async def release_binding(
     binding_id: int,
-    payload: ReleaseBindingRequest,
+    payload: ReleaseBindingRequest | None = None,
     service: BindingService = Depends(get_binding_service),
 ) -> Response:
-    """Release (deactivate) a binding."""
-    await service.release_binding(binding_id, payload)
+    """Release (delete) a binding."""
+    await service.release_binding(binding_id, payload or ReleaseBindingRequest())
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

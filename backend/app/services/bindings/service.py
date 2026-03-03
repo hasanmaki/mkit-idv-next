@@ -7,6 +7,7 @@ from app.api.schemas.bindings import (
     BulkBindRequest,
     ReleaseBindingRequest,
     RequestOTPRequest,
+    SmartBindRequest,
     VerifyOTPRequest,
     WorkflowStepUpdateRequest,
 )
@@ -99,7 +100,7 @@ class BindingService:
         return BindingResponse.model_validate(binding)
 
     async def bulk_bind_accounts(self, data: BulkBindRequest) -> list[BindingResponse]:
-        """Bind multiple accounts to a server for an order."""
+        """Bind multiple accounts to a single server for an order."""
         log_ctx = {"order_id": data.order_id, "account_count": len(data.account_ids)}
         logger.info("Bulk binding accounts", extra=log_ctx)
 
@@ -136,10 +137,68 @@ class BindingService:
         )
         return results
 
+    async def smart_bind_accounts(
+        self, data: SmartBindRequest
+    ) -> list[BindingResponse]:
+        """High-efficiency pairwise binding using human-readable PENANDA (port:msisdn)."""
+        log_ctx = {"order_id": data.order_id, "pair_count": len(data.mappings)}
+        logger.info("Executing smart bind (port:msisdn)", extra=log_ctx)
+
+        # 1. Verify order exists
+        await self._verify_order_exists(data.order_id)
+
+        results: list[Bindings] = []
+
+        # 2. Process each pair
+        for item in data.mappings:
+            # A. Resolve Server by Port
+            server = await self.servers_repo.get_by(self.session, port=item.server_port)
+            if not server:
+                raise AppNotFoundError(
+                    message=f"Server dengan Port {item.server_port} tidak ditemukan.",
+                    error_code="server_port_not_found",
+                )
+
+            # B. Resolve Account by MSISDN (within this order context)
+            account = await self.accounts_repo.get_by(
+                self.session, msisdn=item.msisdn.strip(), order_id=data.order_id
+            )
+            if not account:
+                raise AppNotFoundError(
+                    message=f"Akun MSISDN {item.msisdn} tidak ditemukan dalam Order {data.order_id}.",
+                    error_code="account_msisdn_not_found",
+                )
+
+            # C. Check if already bound
+            await self._check_account_already_bound(account.id)
+
+            # D. Create Binding
+            binding = await self.bindings_repo.create(
+                self.session,
+                order_id=data.order_id,
+                server_id=server.id,
+                account_id=account.id,
+                is_reseller=data.is_reseller,
+                priority=data.priority,
+                step="BINDED",
+                is_active=True,
+            )
+            results.append(binding)
+
+        await self.session.flush()
+
+        # 3. Return enriched responses
+        final_list = []
+        for b in results:
+            final_list.append(await self.get_binding(b.id))
+
+        logger.info(f"Smart bind success: {len(final_list)} created.")
+        return final_list
+
     async def get_binding(self, binding_id: int) -> BindingResponse:
         """Get a binding by ID with joined human-readable data."""
         from sqlalchemy import select
-        
+
         stmt = (
             select(
                 Bindings,
@@ -152,19 +211,22 @@ class BindingService:
             .join(Accounts, Bindings.account_id == Accounts.id)
             .where(Bindings.id == binding_id)
         )
-        
+
         result = await self.session.execute(stmt)
         row = result.first()
-        
+
         if not row:
             raise AppNotFoundError(
                 message=f"Binding dengan ID {binding_id} tidak ditemukan",
                 error_code="binding_not_found",
                 context={"binding_id": binding_id},
             )
-            
+
         return BindingResponse(
-            **{c.name: getattr(row.Bindings, c.name) for c in Bindings.__table__.columns},
+            **{
+                c.name: getattr(row.Bindings, c.name)
+                for c in Bindings.__table__.columns
+            },
             order_name=row.order_name,
             server_name=row.server_name,
             account_msisdn=row.account_msisdn,
@@ -179,7 +241,7 @@ class BindingService:
     ) -> list[BindingResponse]:
         """List bindings with filtering and joined human-readable data."""
         from sqlalchemy import select
-        
+
         filters = []
         if order_id is not None:
             filters.append(Bindings.order_id == order_id)
@@ -207,7 +269,10 @@ class BindingService:
 
         return [
             BindingResponse(
-                **{c.name: getattr(row.Bindings, c.name) for c in Bindings.__table__.columns},
+                **{
+                    c.name: getattr(row.Bindings, c.name)
+                    for c in Bindings.__table__.columns
+                },
                 order_name=row.order_name,
                 server_name=row.server_name,
                 account_msisdn=row.account_msisdn,
@@ -240,20 +305,16 @@ class BindingService:
         )
         return await self.get_binding(binding_id)
 
-    async def update_binding(
-        self, 
-        binding_id: int, 
-        data: dict
-    ) -> BindingResponse:
+    async def update_binding(self, binding_id: int, data: dict) -> BindingResponse:
         """Update binding properties like server_id, priority, etc."""
         binding = await self._get_binding_entity(binding_id)
-        
+
         # If server is changing, verify it exists
         if "server_id" in data and data["server_id"] != binding.server_id:
             await self._verify_server_exists(data["server_id"])
-            
+
         updated = await self.bindings_repo.update(self.session, binding, **data)
-        
+
         logger.info("Binding updated", extra={"binding_id": binding_id})
         return await self.get_binding(binding_id)
 
@@ -264,7 +325,7 @@ class BindingService:
     ) -> None:
         """Release (delete) a binding to free the account."""
         await self._get_binding_entity(binding_id)
-        
+
         # Hard delete to free up the account_id UniqueConstraint
         await self.bindings_repo.delete(self.session, binding_id)
         logger.info("Binding released (deleted)", extra={"binding_id": binding_id})
