@@ -33,7 +33,7 @@ class OrderService:
     async def create_order(self, data: OrderCreateRequest) -> OrderResponse:
         """Create a new order with optional MSISDN list.
 
-        This operation is atomic. If account creation fails, the order
+        This operation is atomic. If account creation fails, the order 
         creation will be rolled back by the session handler.
         """
         log_ctx = {"name": data.name, "email": data.email}
@@ -60,9 +60,13 @@ class OrderService:
         if msisdn_list:
             await self._create_associated_accounts(order, msisdn_list)
 
-        logger.info("Order created successfully", extra={"order_id": order.id})
-        return OrderResponse.model_validate(order)
+        # 5. Flush and refresh to ensure DB consistency before fetching counts
+        await self.session.flush()
 
+        logger.info("Order created successfully", extra={"order_id": order.id})
+
+        # Return fully populated order (with account_count from get_order)
+        return await self.get_order(order.id)
     async def get_order(self, order_id: int) -> OrderResponse:
         """Get an order by ID with validation."""
         order = await self.repo.get(self.session, order_id)

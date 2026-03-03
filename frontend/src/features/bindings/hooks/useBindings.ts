@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest, ApiError } from "@/lib/api";
+import { useApiError } from "@/hooks/useApiError";
 import type {
   BalanceStartPayload,
   BindAccountPayload,
@@ -9,14 +10,26 @@ import type {
   BulkBindPayload,
   RequestOTPPayload,
   VerifyOTPPayload,
+  WorkflowStepPayload,
 } from "../types";
 
 export function useBindings() {
   const [bindings, setBindings] = useState<Binding[]>([]);
   const [selectedBindingIds, setSelectedBindingIds] = useState<number[]>([]);
   const [isLoadingBindings, setIsLoadingBindings] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
+
+  // Memoize options to prevent unstable handleError from useApiError
+  const apiErrorOptions = useMemo(() => ({ displayMode: "toast" as const }), []);
+  
+  const {
+    error,
+    isDialogOpen,
+    errorMessage,
+    handleError,
+    clearError,
+    closeDialog,
+  } = useApiError(apiErrorOptions);
 
   const [isBindDialogOpen, setIsBindDialogOpen] = useState(false);
   const [isBulkBindDialogOpen, setIsBulkBindDialogOpen] = useState(false);
@@ -34,6 +47,7 @@ export function useBindings() {
     order_id: 0,
     server_id: 0,
     account_id: 0,
+    is_reseller: false,
     priority: 1,
     description: "",
     notes: "",
@@ -43,6 +57,7 @@ export function useBindings() {
     order_id: 0,
     server_id: 0,
     account_ids: "" as string | number[],
+    is_reseller: false,
     priority: 1,
     description: "",
     notes: "",
@@ -52,15 +67,21 @@ export function useBindings() {
   const [activeBindingId, setActiveBindingId] = useState<number | null>(null);
   const [pendingReleaseBindingId, setPendingReleaseBindingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    void loadBindings();
-    void loadDropdownOptions();
-  }, []);
+  const loadBindings = useCallback(async (): Promise<void> => {
+    try {
+      setIsLoadingBindings(true);
+      const payload = await apiRequest<Binding[]>("/v1/bindings", "GET");
+      setBindings(payload);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setIsLoadingBindings(false);
+    }
+  }, [handleError]);
 
-  async function loadDropdownOptions(): Promise<void> {
+  const loadDropdownOptions = useCallback(async (): Promise<void> => {
     try {
       setIsLoadingOptions(true);
-      // Load orders and servers for dropdowns
       const [ordersData, serversData] = await Promise.all([
         apiRequest<{ id: number; name: string }[]>("/v1/orders?selectable=true", "GET").catch(() => []),
         apiRequest<{ id: number; name: string; port: number }[]>("/v1/bindings/servers/active", "GET").catch(() => []),
@@ -68,11 +89,16 @@ export function useBindings() {
       setOrders(ordersData);
       setServers(serversData);
     } catch (error) {
-      console.error("Failed to load dropdown options:", error);
+      handleError(error);
     } finally {
       setIsLoadingOptions(false);
     }
-  }
+  }, [handleError]);
+
+  useEffect(() => {
+    void loadBindings();
+    void loadDropdownOptions();
+  }, [loadBindings, loadDropdownOptions]);
 
   async function loadAccountsForOrder(orderId: number): Promise<void> {
     try {
@@ -82,7 +108,7 @@ export function useBindings() {
       );
       setAccounts(accountsData);
     } catch (error) {
-      console.error("Failed to load accounts:", error);
+      handleError(error);
       setAccounts([]);
     }
   }
@@ -116,29 +142,15 @@ export function useBindings() {
     setSelectedBindingIds((previous) => previous.filter((id) => id !== bindingId));
   }
 
-  async function loadBindings(): Promise<void> {
-    try {
-      setIsLoadingBindings(true);
-      setErrorMessage(null);
-      const payload = await apiRequest<Binding[]>("/v1/bindings", "GET");
-      setBindings(payload);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memuat bindings.");
-    } finally {
-      setIsLoadingBindings(false);
-    }
-  }
-
   async function bindAccount(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       const payload: BindAccountPayload = {
         order_id: bindForm.order_id,
         server_id: bindForm.server_id,
         account_id: bindForm.account_id,
+        is_reseller: bindForm.is_reseller,
         priority: bindForm.priority,
         description: bindForm.description || null,
         notes: bindForm.notes || null,
@@ -149,17 +161,17 @@ export function useBindings() {
         order_id: 0,
         server_id: 0,
         account_id: 0,
+        is_reseller: false,
         priority: 1,
         description: "",
         notes: "",
       });
-      setAccounts([]); // Clear accounts
+      setAccounts([]);
       setIsBindDialogOpen(false);
       upsertBinding(created);
       toast.success("Binding berhasil dibuat.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(error instanceof Error ? error.message : "Gagal membuat binding.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -177,17 +189,17 @@ export function useBindings() {
   async function bulkBindAccounts(): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
 
       const accountIds =
         typeof bulkBindForm.account_ids === "string"
-          ? bulkBindForm.account_ids.split(",").map((s) => parseInt(s.trim(), 10))
+          ? bulkBindForm.account_ids.split(",").map((s) => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
           : bulkBindForm.account_ids;
 
       const payload: BulkBindPayload = {
         order_id: bulkBindForm.order_id,
         server_id: bulkBindForm.server_id,
         account_ids: accountIds,
+        is_reseller: bulkBindForm.is_reseller,
         priority: bulkBindForm.priority,
         description: bulkBindForm.description || null,
         notes: bulkBindForm.notes || null,
@@ -198,16 +210,17 @@ export function useBindings() {
         order_id: 0,
         server_id: 0,
         account_ids: "",
+        is_reseller: false,
         priority: 1,
         description: "",
         notes: "",
       });
       setIsBulkBindDialogOpen(false);
-      created.forEach((b) => upsertBinding(b));
+      // Refresh list to be sure
+      void loadBindings();
       toast.success(`${created.length} bindings berhasil dibuat.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error(error instanceof Error ? error.message : "Gagal membuat bulk bindings.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
     }
@@ -216,22 +229,20 @@ export function useBindings() {
   async function requestOTP(bindingId: number, pin: string): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(bindingId, "request_otp");
 
       const payload: RequestOTPPayload = { pin };
       const updated = await apiRequest<Binding>(
-        `/v1/bindings/${bindingId}/request-otp`,
+        `/v1/bindings/${bindingId}/otp/request`,
         "POST",
         payload,
       );
       upsertBinding(updated);
       setIsOTPDialogOpen(false);
       setActiveBindingId(null);
-      toast.success("OTP berhasil diminta.");
+      toast.success("OTP berhasil diminta dari provider.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal meminta OTP.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
@@ -241,43 +252,49 @@ export function useBindings() {
   async function verifyOTP(bindingId: number, otp: string): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(bindingId, "verify_otp");
 
       const payload: VerifyOTPPayload = { otp };
       const updated = await apiRequest<Binding>(
-        `/v1/bindings/${bindingId}/verify-otp`,
+        `/v1/bindings/${bindingId}/otp/verify`,
         "POST",
         payload,
       );
       upsertBinding(updated);
       setIsOTPDialogOpen(false);
       setActiveBindingId(null);
-      toast.success("OTP berhasil diverifikasi.");
+      toast.success("OTP berhasil diverifikasi. Saldo dan token telah diperbarui.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal memverifikasi OTP.");
+      handleError(error, { displayMode: "dialog" });
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
     }
   }
 
-  async function markVerified(bindingId: number): Promise<void> {
+  async function updateWorkflowStep(
+    bindingId: number, 
+    step: string, 
+    tokenLocation?: string | null
+  ): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
-      markRowAction(bindingId, "mark_verified");
+      markRowAction(bindingId, "update_step");
 
+      const payload: WorkflowStepPayload = { 
+        step, 
+        token_location: tokenLocation 
+      };
+      
       const updated = await apiRequest<Binding>(
-        `/v1/bindings/${bindingId}/mark-verified`,
-        "POST",
+        `/v1/bindings/${bindingId}/step`,
+        "PATCH",
+        payload,
       );
       upsertBinding(updated);
-      toast.success("Binding marked as verified.");
+      toast.success(`Workflow step updated to ${step}.`);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal mark verified.");
+      handleError(error);
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
@@ -291,7 +308,6 @@ export function useBindings() {
   ): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(bindingId, "set_balance");
 
       const payload: BalanceStartPayload = { balance_start: balance, source };
@@ -303,10 +319,9 @@ export function useBindings() {
       upsertBinding(updated);
       setIsBalanceDialogOpen(false);
       setActiveBindingId(null);
-      toast.success("Balance start berhasil diupdate.");
+      toast.success("Balance start berhasil diperbarui.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal update balance start.");
+      handleError(error);
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
@@ -316,17 +331,15 @@ export function useBindings() {
   async function releaseBinding(bindingId: number): Promise<void> {
     try {
       setIsSubmitting(true);
-      setErrorMessage(null);
       markRowAction(bindingId, "release");
 
-      await apiRequest(`/v1/bindings/${bindingId}/release`, "POST");
+      await apiRequest(`/v1/bindings/${bindingId}/release`, "POST", {});
       removeBindingFromState(bindingId);
       setIsReleaseConfirmOpen(false);
       setPendingReleaseBindingId(null);
       toast.success("Binding berhasil di-release.");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error");
-      toast.error("Gagal release binding.");
+      handleError(error);
     } finally {
       setIsSubmitting(false);
       clearRowAction(bindingId);
@@ -352,6 +365,8 @@ export function useBindings() {
     bindings,
     selectedBindingIds,
     isLoadingBindings,
+    error,
+    isDialogOpen,
     errorMessage,
     pendingRowActions,
     isBindDialogOpen,
@@ -380,12 +395,15 @@ export function useBindings() {
     bulkBindAccounts,
     requestOTP,
     verifyOTP,
-    markVerified,
+    updateWorkflowStep,
     setBalanceStart,
     releaseBinding,
     openOTPDialog,
     openBalanceDialog,
     openReleaseConfirm,
     handleOrderChange,
+    handleError,
+    clearError,
+    closeDialog,
   };
 }

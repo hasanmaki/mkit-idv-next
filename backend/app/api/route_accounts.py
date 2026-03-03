@@ -40,10 +40,10 @@ async def bulk_create_accounts(
     service: AccountService = Depends(get_account_service),
 ) -> list[AccountResponse]:
     """Create multiple accounts for an order at once.
-    
+
     - **order_id**: Order ID these accounts belong to (must exist)
     - **accounts**: List of accounts to create with msisdn, email, pin (optional), is_reseller
-    
+
     All accounts are created in a single transaction. If any validation fails,
     no accounts will be created.
     """
@@ -56,13 +56,26 @@ async def bulk_create_accounts(
 )
 async def list_accounts(
     order_id: int | None = None,
+    msisdn: str | None = None,
+    email: str | None = None,
+    is_active: bool | None = None,
+    is_processed: bool | None = None,
     skip: int = 0,
     limit: int = 100,
     service: AccountService = Depends(get_account_service),
 ) -> list[AccountResponse]:
-    """List accounts with optional order filter."""
-    accounts_data = await service.list_accounts(order_id=order_id, skip=skip, limit=limit)
+    """List accounts with comprehensive filtering."""
+    accounts_data = await service.list_accounts(
+        order_id=order_id,
+        msisdn=msisdn,
+        email=email,
+        is_active=is_active,
+        is_processed=is_processed,
+        skip=skip,
+        limit=limit,
+    )
     return [AccountResponse(**account_data) for account_data in accounts_data]
+
 
 
 @router.get(

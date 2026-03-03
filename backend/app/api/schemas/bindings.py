@@ -11,6 +11,7 @@ class BindAccountRequest(BaseModel):
     order_id: int = Field(..., gt=0, description="Order ID")
     server_id: int = Field(..., gt=0, description="Server ID")
     account_id: int = Field(..., gt=0, description="Account ID to bind")
+    is_reseller: bool = Field(False, description="Whether this binding is for a reseller account")
     priority: int = Field(1, ge=1, description="Priority (lower = higher priority)")
     description: str | None = Field(None, max_length=255)
     notes: str | None = Field(None, max_length=500)
@@ -22,6 +23,7 @@ class BulkBindRequest(BaseModel):
     order_id: int = Field(..., gt=0, description="Order ID")
     server_id: int = Field(..., gt=0, description="Server ID")
     account_ids: list[int] = Field(..., min_length=1, description="List of account IDs")
+    is_reseller: bool = Field(False, description="Whether these bindings are for reseller accounts")
     priority: int = Field(1, ge=1, description="Priority for all bindings")
     description: str | None = Field(None, max_length=255)
     notes: str | None = Field(None, max_length=500)
@@ -39,6 +41,14 @@ class VerifyOTPRequest(BaseModel):
     """Request schema for verifying OTP."""
 
     otp: str = Field(..., min_length=4, max_length=10, description="OTP code")
+
+
+class WorkflowStepUpdateRequest(BaseModel):
+    """Request schema for manual workflow step transitions."""
+
+    step: str = Field(..., description="Target workflow step (e.g. BINDED, REQUEST_OTP, CHECK_BALANCE, etc.)")
+    token_location: str | None = Field(None, description="Updated token location if applicable")
+    notes: str | None = Field(None, description="Optional notes for this step transition")
 
 
 class ReleaseBindingRequest(BaseModel):
@@ -64,6 +74,8 @@ class BindingResponse(BaseModel):
     server_id: int = Field(..., examples=[1])
     account_id: int = Field(..., examples=[100])
     step: str = Field(..., examples=["BINDED"])
+    is_reseller: bool = Field(..., examples=[False])
+    token_location: str | None = Field(None, examples=["/path/to/token"])
     device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
     is_active: bool = Field(..., examples=[True])
     priority: int = Field(..., examples=[1])

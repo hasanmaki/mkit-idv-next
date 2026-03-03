@@ -141,7 +141,10 @@ export function useOrders() {
         notes: "",
       });
       setIsCreateDialogOpen(false);
-      upsertOrder(created);
+      
+      // Re-fetch entire list to ensure everything is smooth and counts are correct
+      await loadOrders();
+      
       toast.success("Order berhasil dibuat.");
     } catch (error) {
       handleError(error, { displayMode: "dialog" });

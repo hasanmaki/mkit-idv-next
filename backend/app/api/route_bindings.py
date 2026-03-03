@@ -14,6 +14,7 @@ from app.api.schemas.bindings import (
     ReleaseBindingRequest,
     RequestOTPRequest,
     VerifyOTPRequest,
+    WorkflowStepUpdateRequest,
 )
 from app.services.bindings.service import BindingService
 
@@ -60,6 +61,7 @@ async def bind_account(
     - **order_id**: Order that owns this binding
     - **server_id**: Server to bind to
     - **account_id**: Account to bind (must not be already bound)
+    - **is_reseller**: Whether it's a reseller account
     - **priority**: Priority for queue management (lower = higher priority)
     """
     return await service.bind_account(payload)
@@ -79,6 +81,7 @@ async def bulk_bind_accounts(
     - **order_id**: Order that owns these bindings
     - **server_id**: Server to bind to
     - **account_ids**: List of account IDs to bind
+    - **is_reseller**: Whether they are reseller accounts
     - **priority**: Priority for all bindings
     """
     return await service.bulk_bind_accounts(payload)
@@ -129,6 +132,26 @@ async def get_binding(
 ) -> BindingResponse:
     """Get a binding by ID."""
     return await service.get_binding(binding_id)
+
+
+@router.patch(
+    "/{binding_id}/step",
+    response_model=BindingResponse,
+    responses={404: {"description": "Binding not found"}},
+)
+async def update_workflow_step(
+    binding_id: int,
+    payload: WorkflowStepUpdateRequest,
+    service: BindingService = Depends(get_binding_service),
+) -> BindingResponse:
+    """Manually update workflow step and metadata.
+
+    This is a generic endpoint for any workflow transition like:
+    - BINDED -> REQUEST_OTP
+    - VERIFIED -> CHECK_BALANCE
+    - CHECK_BALANCE -> COMPLETED
+    """
+    return await service.update_workflow_step(binding_id, payload)
 
 
 @router.post(

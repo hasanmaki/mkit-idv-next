@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Users } from "lucide-react";
+import { Plus, RefreshCw, Users, Link2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ErrorDialog } from "@/components/error/ErrorDialog";
 
 import {
   BalanceDialogFields,
@@ -81,27 +82,24 @@ export function BindingsPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Bindings Management</h1>
+        <div className="flex items-center gap-2">
+          <Link2 className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold tracking-tight">Binding Management</h1>
+        </div>
         <p className="text-sm text-muted-foreground">
-          Bind accounts to servers for sessions. Manage OTP workflow and balance tracking.
+          Hubungkan akun MSISDN ke instance server untuk menjalankan transaksi IDV.
         </p>
       </header>
-
-      {vm.errorMessage ? (
-        <Card className="border-destructive/40 bg-destructive/10">
-          <CardContent className="py-3 text-sm text-destructive">{vm.errorMessage}</CardContent>
-        </Card>
-      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatCard title="Total Bindings" value={vm.bindings.length.toString()} />
         <StatCard
-          title="Active"
+          title="Sesi Aktif"
           value={vm.bindings.filter((b) => b.is_active).length.toString()}
         />
         <StatCard
-          title="Verified"
-          value={vm.bindings.filter((b) => b.step === "VERIFIED").length.toString()}
+          title="Terverifikasi"
+          value={vm.bindings.filter((b) => b.step === "VERIFIED" || b.step === "COMPLETED").length.toString()}
         />
       </section>
 
@@ -109,13 +107,13 @@ export function BindingsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Bindings</CardTitle>
+              <CardTitle>Daftar Bindings</CardTitle>
               <CardDescription>
-                Manage account bindings with workflow tracking.
+                Kelola status alur kerja OTP, pengecekan saldo, dan sesi server.
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => vm.loadBindings()}>
+              <Button variant="secondary" onClick={() => void vm.loadBindings()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
 
@@ -127,9 +125,9 @@ export function BindingsPage() {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Bulk Bind Accounts</DialogTitle>
+                    <DialogTitle>Bulk Bind Akun</DialogTitle>
                     <DialogDescription>
-                      Bind multiple accounts to a server at once.
+                      Hubungkan banyak akun ke satu server sekaligus.
                     </DialogDescription>
                   </DialogHeader>
                   <BulkBindFormFields
@@ -137,8 +135,8 @@ export function BindingsPage() {
                     onChange={vm.setBulkBindForm}
                   />
                   <DialogFooter>
-                    <Button onClick={() => vm.bulkBindAccounts()} disabled={vm.isSubmitting}>
-                      Bind All
+                    <Button onClick={() => void vm.bulkBindAccounts()} disabled={vm.isSubmitting}>
+                      Jalankan Bulk Bind
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -147,14 +145,14 @@ export function BindingsPage() {
               <Dialog open={vm.isBindDialogOpen} onOpenChange={vm.setIsBindDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <Plus className="mr-2 h-4 w-4" /> Bind Account
+                    <Plus className="mr-2 h-4 w-4" /> New Binding
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Bind Account to Server</DialogTitle>
+                    <DialogTitle>Tambah Binding Baru</DialogTitle>
                     <DialogDescription>
-                      Create a new binding between session, account, and server.
+                      Pilih session, akun, dan server untuk dihubungkan.
                     </DialogDescription>
                   </DialogHeader>
                   <BindAccountFormFields
@@ -167,8 +165,8 @@ export function BindingsPage() {
                     onOrderChange={vm.handleOrderChange}
                   />
                   <DialogFooter>
-                    <Button onClick={() => vm.bindAccount()} disabled={vm.isSubmitting}>
-                      Bind
+                    <Button onClick={() => void vm.bindAccount()} disabled={vm.isSubmitting}>
+                      Simpan Binding
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -183,7 +181,6 @@ export function BindingsPage() {
             pendingRowActions={vm.pendingRowActions}
             onRequestOTP={(id) => handleOpenOTP(id, "request")}
             onVerifyOTP={(id) => handleOpenOTP(id, "verify")}
-            onMarkVerified={vm.markVerified}
             onSetBalance={(id) => handleOpenBalance(id)}
             onRelease={vm.openReleaseConfirm}
           />
@@ -195,12 +192,12 @@ export function BindingsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {otpMode === "request" ? "Request OTP" : "Verify OTP"}
+              {otpMode === "request" ? "Minta Kode OTP" : "Verifikasi OTP"}
             </DialogTitle>
             <DialogDescription>
               {otpMode === "request"
-                ? "Request OTP for the binding."
-                : "Enter the OTP code to verify."}
+                ? "Masukkan PIN untuk memicu pengiriman SMS OTP dari provider."
+                : "Masukkan kode OTP yang diterima melalui SMS."}
             </DialogDescription>
           </DialogHeader>
           <OTPDialogFields
@@ -213,19 +210,19 @@ export function BindingsPage() {
           />
           <DialogFooter>
             <Button variant="secondary" onClick={() => vm.setIsOTPDialogOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={() => {
                 if (otpMode === "request" && activeBinding) {
-                  vm.requestOTP(activeBinding.id, pin);
+                  void vm.requestOTP(activeBinding.id, pin);
                 } else if (activeBinding) {
-                  vm.verifyOTP(activeBinding.id, otp);
+                  void vm.verifyOTP(activeBinding.id, otp);
                 }
               }}
               disabled={vm.isSubmitting || (otpMode === "request" && !pin) || (otpMode === "verify" && !otp)}
             >
-              {otpMode === "request" ? "Request OTP" : "Verify OTP"}
+              {otpMode === "request" ? "Kirim Request" : "Verifikasi Sekarang"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -235,9 +232,9 @@ export function BindingsPage() {
       <Dialog open={vm.isBalanceDialogOpen} onOpenChange={vm.setIsBalanceDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Set Balance Start</DialogTitle>
+            <DialogTitle>Update Saldo Awal</DialogTitle>
             <DialogDescription>
-              Set the starting balance for this binding.
+              Tentukan saldo awal untuk binding ini secara manual.
             </DialogDescription>
           </DialogHeader>
           <BalanceDialogFields
@@ -249,17 +246,17 @@ export function BindingsPage() {
           />
           <DialogFooter>
             <Button variant="secondary" onClick={() => vm.setIsBalanceDialogOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={() => {
                 if (activeBinding) {
-                  vm.setBalanceStart(activeBinding.id, balance, balanceSource);
+                  void vm.setBalanceStart(activeBinding.id, balance, balanceSource);
                 }
               }}
               disabled={vm.isSubmitting}
             >
-              Save Balance
+              Simpan Saldo
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -269,27 +266,34 @@ export function BindingsPage() {
       <AlertDialog open={vm.isReleaseConfirmOpen} onOpenChange={vm.setIsReleaseConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Release binding?</AlertDialogTitle>
+            <AlertDialogTitle>Release Sesi Binding?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will logout the binding and free the account for other sessions.
-              This action cannot be undone.
+              Aksi ini akan mengeluarkan akun dari sesi aktif server. Akun akan tersedia kembali untuk sesi lain.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={vm.isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={vm.isSubmitting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (vm.pendingReleaseBindingId) {
-                  vm.releaseBinding(vm.pendingReleaseBindingId);
+                  void vm.releaseBinding(vm.pendingReleaseBindingId);
                 }
               }}
               disabled={vm.isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Release
+              Release Sesi
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorDialog
+        error={vm.error}
+        open={vm.isDialogOpen}
+        onOpenChange={vm.closeDialog}
+        title="Gagal Memproses Binding"
+      />
     </section>
   );
 }

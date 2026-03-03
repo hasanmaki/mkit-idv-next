@@ -163,10 +163,14 @@ class AccountService:
     async def list_accounts(
         self,
         order_id: int | None = None,
+        msisdn: str | None = None,
+        email: str | None = None,
+        is_active: bool | None = None,
+        is_processed: bool | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[dict]:
-        """List accounts with optional order filter.
+        """List accounts with comprehensive filtering.
         
         Returns accounts with order_name included.
         """
@@ -180,9 +184,21 @@ class AccountService:
         # Apply filters
         if order_id is not None:
             stmt = stmt.where(Accounts.order_id == order_id)
+        
+        if msisdn:
+            stmt = stmt.where(Accounts.msisdn.like(f"%{msisdn.strip()}%"))
+            
+        if email:
+            stmt = stmt.where(Accounts.email.like(f"%{email.strip()}%"))
+            
+        if is_active is not None:
+            stmt = stmt.where(Accounts.is_active == is_active)
+            
+        if is_processed is not None:
+            stmt = stmt.where(Accounts.is_processed == is_processed)
 
-        # Apply pagination
-        stmt = stmt.offset(skip).limit(limit)
+        # Apply pagination and sorting
+        stmt = stmt.order_by(Accounts.id.desc()).offset(skip).limit(limit)
 
         result = await self.session.execute(stmt)
         rows = result.all()

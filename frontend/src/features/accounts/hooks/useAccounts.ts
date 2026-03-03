@@ -20,7 +20,9 @@ export function useAccounts() {
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [pendingRowActions, setPendingRowActions] = useState<Record<number, string>>({});
 
-  // Use centralized error handling
+  // Memoize options to prevent unstable handleError from useApiError
+  const apiErrorOptions = useMemo(() => ({ displayMode: "toast" as const }), []);
+  
   const {
     error,
     isDialogOpen,
@@ -28,9 +30,7 @@ export function useAccounts() {
     handleError,
     clearError,
     closeDialog,
-  } = useApiError({
-    displayMode: "toast",
-  });
+  } = useApiError(apiErrorOptions);
 
   const [isSingleDialogOpen, setIsSingleDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
@@ -102,6 +102,7 @@ export function useAccounts() {
     }
   }, [filters, handleError]);
 
+  // Initial load
   useEffect(() => {
     void loadAccounts();
     void loadOrders();
@@ -144,6 +145,7 @@ export function useAccounts() {
       setSingleForm({
         order_id: 0,
         msisdn: "",
+        batch_id: "",
         email: "",
         pin: "",
         notes: "",

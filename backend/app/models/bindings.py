@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.mixins import Base, TimestampMixin
@@ -41,15 +41,19 @@ class Bindings(Base, TimestampMixin):
         index=True,
     )
 
-    # Workflow tracking (simplified)
+    # Workflow tracking
     step: Mapped[str] = mapped_column(
         String(50),
         default="BINDED",
         nullable=False,
         index=True,
-    )  # BINDED, REQUEST_OTP, VERIFY_OTP, VERIFIED, LOGGED_OUT
+    )  # BINDED, REQUEST_OTP, VERIFY_OTP, VERIFIED, CHECK_BALANCE, COMPLETED, LOGGED_OUT
 
-    # Device untuk OTP
+    # Workflow Flags
+    is_reseller: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    # Session / Security Data
+    token_location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Control

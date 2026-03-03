@@ -17,7 +17,7 @@ install:
 	cd $(FRONTEND_DIR) && npm install
 
 dev-backend:
-	cd $(BACKEND_DIR) && uv run fastapi dev app/main.py --port 9914
+	cd $(BACKEND_DIR) && uv run uvicorn app.main:app --host 0.0.0.0 --port 9914 --reload --reload-exclude "*.log"
 
 dev-frontend:
 	cd $(FRONTEND_DIR) && npm run dev
@@ -25,7 +25,7 @@ dev-frontend:
 dev:
 	@set -euo pipefail; \
 	trap 'kill 0' INT TERM EXIT; \
-	(cd $(BACKEND_DIR) && uv run fastapi dev app/main.py --port 9914) & \
+	(cd $(BACKEND_DIR) && uv run uvicorn app.main:app --host 0.0.0.0 --port 9914 --reload --reload-exclude "*.log") & \
 	backend_pid=$$!; \
 	(cd $(FRONTEND_DIR) && npm run dev) & \
 	frontend_pid=$$!; \

@@ -3,7 +3,9 @@ export type Binding = {
   order_id: number;
   server_id: number;
   account_id: number;
-  step: "BINDED" | "REQUEST_OTP" | "VERIFY_OTP" | "VERIFIED" | "LOGGED_OUT";
+  step: "BINDED" | "REQUEST_OTP" | "VERIFY_OTP" | "VERIFIED" | "CHECK_BALANCE" | "COMPLETED" | "LOGGED_OUT";
+  is_reseller: boolean;
+  token_location: string | null;
   device_id: string | null;
   is_active: boolean;
   priority: number;
@@ -20,6 +22,7 @@ export type BindAccountPayload = {
   order_id: number;
   server_id: number;
   account_id: number;
+  is_reseller?: boolean;
   priority?: number;
   description?: string | null;
   notes?: string | null;
@@ -29,6 +32,7 @@ export type BulkBindPayload = {
   order_id: number;
   server_id: number;
   account_ids: number[];
+  is_reseller?: boolean;
   priority?: number;
   description?: string | null;
   notes?: string | null;
@@ -40,6 +44,12 @@ export type RequestOTPPayload = {
 
 export type VerifyOTPPayload = {
   otp: string;
+};
+
+export type WorkflowStepPayload = {
+  step: string;
+  token_location?: string | null;
+  notes?: string | null;
 };
 
 export type BalanceStartPayload = {

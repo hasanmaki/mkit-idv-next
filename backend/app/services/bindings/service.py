@@ -8,6 +8,7 @@ from app.api.schemas.bindings import (
     ReleaseBindingRequest,
     RequestOTPRequest,
     VerifyOTPRequest,
+    WorkflowStepUpdateRequest,
 )
 from app.core.exceptions import AppNotFoundError, AppValidationError
 from app.core.log_config import get_logger
@@ -16,6 +17,7 @@ from app.models.bindings import Bindings
 from app.models.orders import Orders
 from app.models.servers import Servers
 from app.repos.base import BaseRepository
+from app.services.idv.service import IdvService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger("service.bindings")
@@ -25,7 +27,7 @@ class BindingService:
     """Service for binding management - business logic layer.
 
     Uses Pydantic schemas as DTOs (Data Transfer Objects).
-    No redundant command/query objects.
+    Integrates with IdvService for actual provider interaction.
     """
 
     def __init__(self, session: AsyncSession):
@@ -37,14 +39,7 @@ class BindingService:
 
     async def list_accounts_by_order(self, order_id: int) -> list[dict]:
         """List accounts for a specific order (for dropdown)."""
-        # Verify order exists
-        order = await self.orders_repo.get(self.session, order_id)
-        if not order:
-            raise AppNotFoundError(
-                message=f"Order with ID {order_id} not found",
-                error_code="order_not_found",
-                context={"order_id": order_id},
-            )
+        await self._verify_order_exists(order_id)
 
         # Get accounts for this order
         accounts = await self.accounts_repo.get_multi(self.session, order_id=order_id)
@@ -54,7 +49,7 @@ class BindingService:
                 "id": acc.id,
                 "msisdn": acc.msisdn,
                 "email": acc.email,
-                "status": acc.status,
+                "status": acc.status if hasattr(acc, "status") else "UNKNOWN",
             }
             for acc in accounts
         ]
@@ -78,46 +73,13 @@ class BindingService:
         log_ctx = {"order_id": data.order_id, "account_id": data.account_id}
         logger.info("Binding account", extra=log_ctx)
 
-        # Verify order exists
-        order = await self.orders_repo.get(self.session, data.order_id)
-        if not order:
-            raise AppNotFoundError(
-                message=f"Order with ID {data.order_id} not found",
-                error_code="order_not_found",
-                context={"order_id": data.order_id},
-            )
-
-        # Verify server exists
-        server = await self.servers_repo.get(self.session, data.server_id)
-        if not server:
-            raise AppNotFoundError(
-                message=f"Server with ID {data.server_id} not found",
-                error_code="server_not_found",
-                context={"server_id": data.server_id},
-            )
-
-        # Verify account exists
-        account = await self.accounts_repo.get(self.session, data.account_id)
-        if not account:
-            raise AppNotFoundError(
-                message=f"Account with ID {data.account_id} not found",
-                error_code="account_not_found",
-                context={"account_id": data.account_id},
-            )
+        # Verify all entities exist
+        await self._verify_order_exists(data.order_id)
+        await self._verify_server_exists(data.server_id)
+        await self._verify_account_exists(data.account_id)
 
         # Check if account is already bound
-        existing_binding = await self.bindings_repo.get_by(
-            self.session, account_id=data.account_id, is_active=True
-        )
-        if existing_binding:
-            raise AppValidationError(
-                message=f"Account {data.account_id} is already bound",
-                error_code="account_already_bound",
-                context={
-                    "account_id": data.account_id,
-                    "existing_binding_id": existing_binding.id,
-                },
-            )
+        await self._check_account_already_bound(data.account_id)
 
         # Create binding
         binding = await self.bindings_repo.create(
@@ -125,6 +87,7 @@ class BindingService:
             order_id=data.order_id,
             server_id=data.server_id,
             account_id=data.account_id,
+            is_reseller=data.is_reseller,
             priority=data.priority,
             description=data.description,
             notes=data.notes,
@@ -140,15 +103,23 @@ class BindingService:
         log_ctx = {"order_id": data.order_id, "account_count": len(data.account_ids)}
         logger.info("Bulk binding accounts", extra=log_ctx)
 
+        # Verify order and server exist
+        await self._verify_order_exists(data.order_id)
+        await self._verify_server_exists(data.server_id)
+
         results: list[BindingResponse] = []
 
         for account_id in data.account_ids:
-            # Create binding for each account
+            # Check if each account is already bound
+            await self._check_account_already_bound(account_id)
+
+            # Create binding
             binding = await self.bindings_repo.create(
                 self.session,
                 order_id=data.order_id,
                 server_id=data.server_id,
                 account_id=account_id,
+                is_reseller=data.is_reseller,
                 priority=data.priority,
                 description=data.description,
                 notes=data.notes,
@@ -156,6 +127,8 @@ class BindingService:
                 is_active=True,
             )
             results.append(BindingResponse.model_validate(binding))
+
+        await self.session.flush()
 
         logger.info(
             "Bulk binding completed",
@@ -165,13 +138,7 @@ class BindingService:
 
     async def get_binding(self, binding_id: int) -> BindingResponse:
         """Get a binding by ID."""
-        binding = await self.bindings_repo.get(self.session, binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
-                error_code="binding_not_found",
-                context={"binding_id": binding_id},
-            )
+        binding = await self._get_binding_entity(binding_id)
         return BindingResponse.model_validate(binding)
 
     async def list_bindings(
@@ -197,23 +164,37 @@ class BindingService:
         """List all active bindings."""
         return await self.list_bindings(is_active=True)
 
+    async def update_workflow_step(
+        self, binding_id: int, data: WorkflowStepUpdateRequest
+    ) -> BindingResponse:
+        """Manually update workflow step and optional token data."""
+        binding = await self._get_binding_entity(binding_id)
+
+        update_fields = {"step": data.step}
+        if data.token_location is not None:
+            update_fields["token_location"] = data.token_location
+        if data.notes is not None:
+            update_fields["notes"] = data.notes
+
+        updated = await self.bindings_repo.update(
+            self.session, binding, **update_fields
+        )
+
+        logger.info(
+            "Workflow step updated", extra={"binding_id": binding_id, "step": data.step}
+        )
+        return BindingResponse.model_validate(updated)
+
     async def release_binding(
         self,
         binding_id: int,
         data: ReleaseBindingRequest,
     ) -> None:
         """Release (deactivate) a binding."""
-        binding = await self.bindings_repo.get(self.session, binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
-                error_code="binding_not_found",
-                context={"binding_id": binding_id},
-            )
+        binding = await self._get_binding_entity(binding_id)
 
         # Deactivate binding
         await self.bindings_repo.update(self.session, binding, is_active=False)
-
         logger.info("Binding released", extra={"binding_id": binding_id})
 
     async def set_balance_start(
@@ -221,16 +202,10 @@ class BindingService:
         binding_id: int,
         data: BalanceStartUpdateRequest,
     ) -> BindingResponse:
-        """Set balance start for a binding."""
-        binding = await self.bindings_repo.get(self.session, binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
-                error_code="binding_not_found",
-                context={"binding_id": binding_id},
-            )
+        """Set balance start for a binding and sync to Account cache."""
+        binding = await self._get_binding_entity(binding_id)
 
-        # Update balance
+        # Update balance in Binding
         updated_binding = await self.bindings_repo.update(
             self.session,
             binding,
@@ -238,8 +213,13 @@ class BindingService:
             balance_source=data.source,
         )
 
+        # Sync to Account cache
+        await self._sync_balance_to_account(
+            account_id=binding.account_id, balance=data.balance_start
+        )
+
         logger.info(
-            "Balance start updated",
+            "Balance start updated and synced to account",
             extra={"binding_id": binding_id, "balance": data.balance_start},
         )
         return BindingResponse.model_validate(updated_binding)
@@ -249,13 +229,25 @@ class BindingService:
         binding_id: int,
         data: RequestOTPRequest,
     ) -> BindingResponse:
-        """Request OTP for a binding (workflow step)."""
-        binding = await self.bindings_repo.get(self.session, binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
-                error_code="binding_not_found",
-                context={"binding_id": binding_id},
+        """Request OTP from provider for a binding."""
+        binding = await self._get_binding_entity(binding_id)
+        server = await self.servers_repo.get(self.session, binding.server_id)
+        account = await self.accounts_repo.get(self.session, binding.account_id)
+
+        if not server or not account:
+            raise AppValidationError("Data server atau akun tidak lengkap.")
+
+        # Initialize IDV Service and make actual call
+        idv_service = IdvService.from_server(server)
+        response = await idv_service.request_otp(username=account.msisdn, pin=data.pin)
+
+        # Parse provider response (assuming 'status': 'success' based on typical IDV patterns)
+        if response.get("status") != "success":
+            msg = response.get("message", "Gagal meminta OTP dari provider.")
+            raise AppValidationError(
+                message=f"Provider Error: {msg}",
+                error_code="provider_request_otp_failed",
+                context={"provider_response": response},
             )
 
         # Update step to REQUEST_OTP
@@ -263,9 +255,10 @@ class BindingService:
             self.session,
             binding,
             step="REQUEST_OTP",
+            notes=f"OTP Requested. Provider: {response.get('message', 'OK')}",
         )
 
-        logger.info("OTP requested", extra={"binding_id": binding_id})
+        logger.info("OTP requested successfully", extra={"binding_id": binding_id})
         return BindingResponse.model_validate(updated_binding)
 
     async def verify_otp(
@@ -273,35 +266,160 @@ class BindingService:
         binding_id: int,
         data: VerifyOTPRequest,
     ) -> BindingResponse:
-        """Verify OTP for a binding (workflow step)."""
-        binding = await self.bindings_repo.get(self.session, binding_id)
-        if not binding:
-            raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
-                error_code="binding_not_found",
-                context={"binding_id": binding_id},
+        """Verify OTP and automatically sync results to Account cache."""
+        binding = await self._get_binding_entity(binding_id)
+        server = await self.servers_repo.get(self.session, binding.server_id)
+        account = await self.accounts_repo.get(self.session, binding.account_id)
+
+        if not server or not account:
+            raise AppValidationError("Data server atau akun tidak lengkap.")
+
+        # Initialize IDV Service and verify
+        idv_service = IdvService.from_server(server)
+        verify_res = await idv_service.verify_otp(username=account.msisdn, otp=data.otp)
+
+        if verify_res.get("status") != "success":
+            msg = verify_res.get("message", "Kode OTP salah atau kedaluwarsa.")
+            raise AppValidationError(
+                message=f"Verifikasi Gagal: {msg}",
+                error_code="provider_verify_otp_failed",
+                context={"provider_response": verify_res},
             )
 
-        # Update step to VERIFIED
+        # SUCCESS: Fetch latest data
+        logger.info(
+            "OTP verified, fetching balance and token...",
+            extra={"binding_id": binding_id},
+        )
+
+        # 1. Fetch Balance
+        balance_res = await idv_service.get_balance_pulsa(account.msisdn)
+        balance_val = None
+        if balance_res.get("status") == "success":
+            # Assuming balance string like "Rp 50.000" or similar, need to parse if it's integer in DB
+            # For now let's try to extract digits
+            raw_balance = str(balance_res.get("balance", "0"))
+            balance_val = int("".join(filter(str.isdigit, raw_balance)))
+
+        # 2. Fetch Token Location
+        token_res = await idv_service.get_token_location3(account.msisdn)
+        token_loc = token_res.get("token")
+
+        # Update binding with all results
         updated_binding = await self.bindings_repo.update(
             self.session,
             binding,
             step="VERIFIED",
+            balance_start=balance_val,
+            balance_source="AUTO_CHECK",
+            token_location=token_loc,
+            notes=f"Verified & Initialized. Balance: {balance_val}",
         )
 
-        logger.info("OTP verified", extra={"binding_id": binding_id})
+        # Sync results to Account cache
+        await self._sync_balance_to_account(
+            account_id=binding.account_id,
+            balance=balance_val,
+            balance_response=balance_res,
+            card_active=balance_res.get("cardactiveuntil"),
+            grace_period=balance_res.get("graceperioduntil"),
+            expires=balance_res.get("expires"),
+        )
+
+        logger.info(
+            "OTP verified and synced to account cache", extra={"binding_id": binding_id}
+        )
         return BindingResponse.model_validate(updated_binding)
 
     async def delete_binding(self, binding_id: int) -> None:
         """Delete a binding."""
+        await self._get_binding_entity(binding_id)
+        await self.bindings_repo.delete(self.session, binding_id)
+        logger.info("Binding deleted", extra={"binding_id": binding_id})
+
+    # --- Private Helpers ---
+
+    async def _sync_balance_to_account(
+        self,
+        account_id: int,
+        balance: int | None,
+        balance_response: dict | None = None,
+        card_active: str | None = None,
+        grace_period: str | None = None,
+        expires: str | None = None,
+    ) -> None:
+        """Internal helper to push latest balance data to Account table."""
+        account = await self.accounts_repo.get(self.session, account_id)
+        if not account:
+            return
+
+        update_fields = {}
+        if balance is not None:
+            update_fields["balance_last"] = balance
+        if balance_response:
+            update_fields["last_balance_response"] = balance_response
+        if card_active:
+            update_fields["card_active_until"] = card_active
+        if grace_period:
+            update_fields["grace_period_until"] = grace_period
+        if expires:
+            update_fields["expires_info"] = expires
+
+        if update_fields:
+            await self.accounts_repo.update(self.session, account, **update_fields)
+
+    async def _get_binding_entity(self, binding_id: int) -> Bindings:
+        """Internal helper to get raw Binding model."""
         binding = await self.bindings_repo.get(self.session, binding_id)
         if not binding:
             raise AppNotFoundError(
-                message=f"Binding with ID {binding_id} not found",
+                message=f"Binding dengan ID {binding_id} tidak ditemukan",
                 error_code="binding_not_found",
                 context={"binding_id": binding_id},
             )
+        return binding
 
-        await self.bindings_repo.delete(self.session, binding_id)
+    async def _verify_order_exists(self, order_id: int) -> None:
+        """Verify that an order exists."""
+        order = await self.orders_repo.get(self.session, order_id)
+        if not order:
+            raise AppNotFoundError(
+                message=f"Order dengan ID {order_id} tidak ditemukan",
+                error_code="order_not_found",
+                context={"order_id": order_id},
+            )
 
-        logger.info("Binding deleted", extra={"binding_id": binding_id})
+    async def _verify_server_exists(self, server_id: int) -> None:
+        """Verify that a server exists."""
+        server = await self.servers_repo.get(self.session, server_id)
+        if not server:
+            raise AppNotFoundError(
+                message=f"Server dengan ID {server_id} tidak ditemukan",
+                error_code="server_not_found",
+                context={"server_id": server_id},
+            )
+
+    async def _verify_account_exists(self, account_id: int) -> None:
+        """Verify that an account exists."""
+        account = await self.accounts_repo.get(self.session, account_id)
+        if not account:
+            raise AppNotFoundError(
+                message=f"Akun dengan ID {account_id} tidak ditemukan",
+                error_code="account_not_found",
+                context={"account_id": account_id},
+            )
+
+    async def _check_account_already_bound(self, account_id: int) -> None:
+        """Check if an account is already actively bound."""
+        existing = await self.bindings_repo.get_by(
+            self.session, account_id=account_id, is_active=True
+        )
+        if existing:
+            raise AppValidationError(
+                message=f"Akun dengan ID {account_id} sudah terikat pada Binding aktif (ID: {existing.id})",
+                error_code="account_already_bound",
+                context={
+                    "account_id": account_id,
+                    "existing_binding_id": existing.id,
+                },
+            )
