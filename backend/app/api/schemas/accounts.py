@@ -100,7 +100,6 @@ class AccountResponse(BaseModel):
     expires_info: str | None = Field(None, examples=["Berlaku hingga 02 Mar 27"])
     used_count: int = Field(..., examples=[0], description="Number of times used")
     last_used_at: datetime | None = Field(None)
-    last_device_id: str | None = Field(None, examples=["0ee0deeb75df0bca"])
     last_balance_response: dict[str, Any] | None = Field(None, description="Raw balance check response")
     notes: str | None = Field(None, examples=["Priority account"])
     created_at: datetime = Field(..., examples=["2026-02-10T19:00:00.000Z"])

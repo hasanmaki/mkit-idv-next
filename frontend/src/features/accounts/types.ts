@@ -12,7 +12,6 @@ export type Account = {
   expires_info: string | null;
   used_count: number;
   last_used_at: string | null;
-  last_device_id: string | null;
   last_balance_response: Record<string, any> | null;
   notes: string | null;
   created_at: string;
@@ -67,6 +66,5 @@ export type AccountEditForm = {
   email: string;
   pin: string;
   is_active: boolean;
-  last_device_id: string;
   notes: string;
 };

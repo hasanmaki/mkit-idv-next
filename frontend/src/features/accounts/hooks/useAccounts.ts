@@ -54,7 +54,6 @@ export function useAccounts() {
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
   const [pendingDeleteAccountId, setPendingDeleteAccountId] = useState<number | null>(null);
 
-  const totalReseller = useMemo(() => accounts.filter((a) => a.is_reseller).length, [accounts]);
   const selectedCount = selectedAccountIds.length;
   const allSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
 
@@ -161,17 +160,17 @@ export function useAccounts() {
       const msisdns = bulkForm.msisdns_text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
       const payload = {
         order_id: bulkForm.order_id,
-        msisdns,
-        email_suffix: bulkForm.email, // Mapping to backend
-        batch_id: bulkForm.batch_id,
-        pin: bulkForm.pin,
+        accounts: msisdns.map((msisdn) => ({
+          msisdn,
+          email: bulkForm.email,
+          pin: bulkForm.pin || undefined,
+        })),
       };
 
       await apiRequest<Account[]>("/v1/accounts/bulk", "POST", payload);
       setBulkForm({
         order_id: 0,
         msisdns_text: "",
-        batch_id: "",
         pin: "",
         email: "",
       });
@@ -191,10 +190,8 @@ export function useAccounts() {
     setEditForm({
       email: account.email,
       pin: account.pin || "",
-      status: account.status,
-      last_device_id: account.last_device_id || "",
+      is_active: account.is_active,
       notes: account.notes || "",
-      is_reseller: account.is_reseller,
     });
     setIsEditDialogOpen(true);
   }
@@ -213,7 +210,7 @@ export function useAccounts() {
         email: editForm.email || undefined,
         pin: editForm.pin || undefined,
         notes: editForm.notes || undefined,
-        is_reseller: editForm.is_reseller,
+        is_active: editForm.is_active,
       };
 
       const updated = await apiRequest<Account>(
@@ -326,7 +323,6 @@ export function useAccounts() {
     editForm,
     setEditForm,
     isSubmitting,
-    totalReseller,
     selectedCount,
     allSelected,
     orders,

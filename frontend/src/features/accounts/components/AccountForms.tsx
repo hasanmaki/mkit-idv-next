@@ -2,10 +2,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
-import { ACCOUNT_STATUSES, type AccountBulkForm, type AccountEditForm, type AccountSingleForm } from "../types";
+import { type AccountSingleForm, type AccountBulkForm, type AccountEditForm } from "../types";
 
 type SingleAccountFormFieldsProps = {
   form: AccountSingleForm;
@@ -143,8 +142,8 @@ type EditAccountFormFieldsProps = {
 
 export function EditAccountFormFields({ form, onChange }: EditAccountFormFieldsProps) {
   return (
-    <div className="grid gap-4 py-2 md:grid-cols-2">
-      <div className="space-y-2 md:col-span-2">
+    <div className="grid gap-4 py-2">
+      <div className="space-y-2">
         <Label htmlFor="edit-email">Email</Label>
         <Input
           id="edit-email"
@@ -161,36 +160,6 @@ export function EditAccountFormFields({ form, onChange }: EditAccountFormFieldsP
         />
       </div>
       <div className="space-y-2">
-        <Label>Status</Label>
-        <Select
-          value={form.status}
-          onValueChange={(value) =>
-            onChange((prev) => (prev ? { ...prev, status: value as AccountEditForm["status"] } : prev))
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ACCOUNT_STATUSES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="edit-last-device-id">Last Device ID</Label>
-        <Input
-          id="edit-last-device-id"
-          value={form.last_device_id}
-          onChange={(event) =>
-            onChange((prev) => (prev ? { ...prev, last_device_id: event.target.value } : prev))
-          }
-        />
-      </div>
-      <div className="space-y-2 md:col-span-2">
         <Label htmlFor="edit-notes">Notes</Label>
         <Textarea
           id="edit-notes"
@@ -199,15 +168,15 @@ export function EditAccountFormFields({ form, onChange }: EditAccountFormFieldsP
           onChange={(event) => onChange((prev) => (prev ? { ...prev, notes: event.target.value } : prev))}
         />
       </div>
-      <Separator className="md:col-span-2" />
-      <div className="flex items-center justify-between rounded-md border p-3 md:col-span-2">
+      <Separator />
+      <div className="flex items-center justify-between rounded-md border p-3">
         <div>
-          <p className="text-sm font-medium">Is Reseller</p>
-          <p className="text-xs text-muted-foreground">Set reseller flag account.</p>
+          <p className="text-sm font-medium">Active Status</p>
+          <p className="text-xs text-muted-foreground">Set account active status.</p>
         </div>
         <Switch
-          checked={form.is_reseller}
-          onCheckedChange={(checked) => onChange((prev) => (prev ? { ...prev, is_reseller: checked } : prev))}
+          checked={form.is_active}
+          onCheckedChange={(checked) => onChange((prev) => (prev ? { ...prev, is_active: checked } : prev))}
         />
       </div>
     </div>

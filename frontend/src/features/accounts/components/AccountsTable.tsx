@@ -25,16 +25,6 @@ import {
 
 import type { Account } from "../types";
 
-function statusBadgeVariant(status: Account["status"]): "default" | "secondary" | "destructive" {
-  if (status === "active") {
-    return "default";
-  }
-  if (status === "disabled") {
-    return "destructive";
-  }
-  return "secondary";
-}
-
 type AccountsTableProps = {
   accounts: Account[];
   selectedAccountIds: number[];
@@ -66,26 +56,25 @@ export function AccountsTable({
             <TableHead className="w-[42px]">
               <Checkbox checked={allSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} />
             </TableHead>
-            <TableHead className="w-[90px]">ID</TableHead>
+            <TableHead className="w-[70px]">ID</TableHead>
             <TableHead className="w-[120px]">Order</TableHead>
-            <TableHead className="w-[170px]">MSISDN</TableHead>
-            <TableHead className="w-[220px]">Email</TableHead>
-            <TableHead className="w-[120px]">Status</TableHead>
-            <TableHead className="w-[90px]">Reseller</TableHead>
-            <TableHead className="w-[120px]">Balance</TableHead>
+            <TableHead className="w-[150px]">MSISDN</TableHead>
+            <TableHead className="w-[180px]">Email</TableHead>
+            <TableHead className="w-[90px]">Balance</TableHead>
+            <TableHead className="w-[90px]">Active</TableHead>
             <TableHead className="w-[90px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoadingAccounts ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Loading accounts...
               </TableCell>
             </TableRow>
           ) : accounts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 Belum ada account.
               </TableCell>
             </TableRow>
@@ -108,11 +97,14 @@ export function AccountsTable({
                   <TableCell className="text-sm font-medium">{account.order_name}</TableCell>
                   <TableCell className="font-mono text-xs">{account.msisdn}</TableCell>
                   <TableCell className="truncate text-xs">{account.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusBadgeVariant(account.status)}>{account.status}</Badge>
+                  <TableCell className="text-right font-mono text-xs">
+                    {account.balance_last?.toLocaleString() ?? "-"}
                   </TableCell>
-                  <TableCell>{account.is_reseller ? "Yes" : "No"}</TableCell>
-                  <TableCell>{account.balance_last ?? "-"}</TableCell>
+                  <TableCell>
+                    <Badge variant={account.is_active ? "default" : "secondary"}>
+                      {account.is_active ? "Yes" : "No"}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

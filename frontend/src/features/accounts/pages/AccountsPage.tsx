@@ -45,7 +45,6 @@ import {
 } from "../components/AccountForms";
 import { AccountsTable } from "../components/AccountsTable";
 import { useAccounts } from "../hooks/useAccounts";
-import { ACCOUNT_STATUSES } from "../types";
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
@@ -89,7 +88,7 @@ export function AccountsPage() {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <StatCard title="Total" value={vm.accounts.length.toString()} />
-        <StatCard title="Reseller" value={vm.totalReseller.toString()} />
+        <StatCard title="Active" value={vm.accounts.filter(a => a.is_active).length.toString()} />
         <StatCard
           title="Selected"
           value={vm.selectedCount.toString()}
@@ -166,10 +165,10 @@ export function AccountsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Search & Filter</CardTitle>
-          <CardDescription>Filter account berdasarkan msisdn, email, status, reseller.</CardDescription>
+          <CardDescription>Filter account berdasarkan msisdn, email, active status.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="filter-msisdn">MSISDN</Label>
               <Input
@@ -191,40 +190,13 @@ export function AccountsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>Active Status</Label>
               <Select
-                value={vm.filters.status || "__all__"}
+                value={vm.filters.is_active || "__all__"}
                 onValueChange={(value) =>
                   vm.setFilters((prev) => ({
                     ...prev,
-                    status: value === "__all__" ? "" : (value as typeof prev.status),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All</SelectItem>
-                  {ACCOUNT_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Reseller</Label>
-              <Select
-                value={vm.filters.is_reseller || "__all__"}
-                onValueChange={(value) =>
-                  vm.setFilters((prev) => ({
-                    ...prev,
-                    is_reseller:
-                      value === "__all__"
-                        ? ""
-                        : (value as typeof prev.is_reseller),
+                    is_active: value === "__all__" ? "" : (value as typeof prev.is_active),
                   }))
                 }
               >
