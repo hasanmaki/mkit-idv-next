@@ -1,4 +1,4 @@
-import { Loader2, MoreHorizontal, LogOut, RefreshCcw, Settings, Wallet, UserCheck, ShieldCheck, Edit2 } from "lucide-react";
+import { Loader2, MoreHorizontal, LogOut, RefreshCcw, Wallet, UserCheck, ShieldCheck, Edit2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,29 +63,29 @@ export function BindingsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[80px]">ID</TableHead>
-            <TableHead className="w-[150px]">Session / Order</TableHead>
-            <TableHead className="w-[120px]">Server</TableHead>
-            <TableHead className="w-[150px]">Account (MSISDN)</TableHead>
-            <TableHead className="w-[110px]">Type</TableHead>
-            <TableHead className="w-[140px]">Step</TableHead>
-            <TableHead className="w-[120px]">Balance</TableHead>
-            <TableHead className="w-[150px]">Token Info</TableHead>
-            <TableHead className="w-[90px] text-right">Actions</TableHead>
+            <TableHead className="w-[60px]">ID</TableHead>
+            <TableHead className="w-[180px]">Session / Order</TableHead>
+            <TableHead className="w-[140px]">Server Instance</TableHead>
+            <TableHead className="w-[160px]">Account (MSISDN)</TableHead>
+            <TableHead className="w-[100px]">Type</TableHead>
+            <TableHead className="w-[130px]">Status Step</TableHead>
+            <TableHead className="w-[120px]">Last Balance</TableHead>
+            <TableHead className="w-[150px]">Token Location</TableHead>
+            <TableHead className="w-[80px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoadingBindings ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                Loading bindings...
+              <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
+                Memuat data bindings...
               </TableCell>
             </TableRow>
           ) : bindings.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                Belum ada bindings aktif.
+              <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                Tidak ada antrean binding aktif saat ini.
               </TableCell>
             </TableRow>
           ) : (
@@ -94,40 +94,46 @@ export function BindingsTable({
               const isRowBusy = Boolean(rowAction);
 
               return (
-                <TableRow key={binding.id}>
-                  <TableCell className="font-mono text-xs">#{binding.id}</TableCell>
+                <TableRow key={binding.id} className={binding.is_active ? "" : "opacity-60 bg-muted/20"}>
+                  <TableCell className="font-mono text-[10px] text-muted-foreground">#{binding.id}</TableCell>
                   <TableCell>
-                    <div className="font-medium text-sm">{binding.order_name || `Session #${binding.order_id}`}</div>
+                    <div className="font-semibold text-sm truncate max-w-[170px]" title={binding.order_name || ""}>
+                      {binding.order_name || `Order #${binding.order_id}`}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{binding.server_name || `Server #${binding.server_id}`}</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {binding.server_name || `Srv:${binding.server_id}`}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-sm text-primary">{binding.account_msisdn || `Acc #${binding.account_id}`}</div>
+                    <div className="font-mono text-sm font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded w-fit">
+                      {binding.account_msisdn || binding.account_id}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {binding.is_reseller ? (
-                      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 h-5 px-1.5 text-[10px]">
+                      <Badge variant="default" className="bg-indigo-600 hover:bg-indigo-700 h-5 px-1.5 text-[9px] font-bold">
                         <UserCheck className="mr-1 h-3 w-3" /> RESELLER
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground">
+                      <Badge variant="outline" className="h-5 px-1.5 text-[9px] text-muted-foreground font-medium">
                         NORMAL
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStepColor(binding.step) as any} className="font-mono text-[10px]">
+                    <Badge variant={getStepColor(binding.step) as any} className="font-mono text-[10px] py-0 px-2">
                       {binding.step}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {binding.balance_start !== null ? (
-                      <div className="text-sm font-bold text-green-600">
+                      <div className="text-sm font-black text-green-700">
                         Rp{binding.balance_start.toLocaleString()}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-[10px] italic">Not Checked</span>
+                      <span className="text-muted-foreground text-[10px] italic">N/A</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -137,13 +143,13 @@ export function BindingsTable({
                         {binding.token_location.split('/').pop()}
                       </div>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground italic">No Token</span>
+                      <span className="text-[10px] text-muted-foreground italic">None</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" disabled={isRowBusy}>
+                        <Button size="icon" variant="ghost" disabled={isRowBusy} className="h-8 w-8">
                           {isRowBusy ? (
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
                           ) : (
@@ -151,7 +157,7 @@ export function BindingsTable({
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="w-[160px]">
                         <DropdownMenuItem
                           disabled={isRowBusy}
                           onClick={() => onEdit(binding)}
@@ -165,7 +171,7 @@ export function BindingsTable({
                             disabled={isRowBusy}
                             onClick={() => onRequestOTP(binding.id)}
                           >
-                            <RefreshCcw className="mr-2 h-4 w-4 text-warning" />
+                            <RefreshCcw className="mr-2 h-4 w-4 text-orange-500" />
                             Request OTP
                           </DropdownMenuItem>
                         )}
@@ -174,7 +180,7 @@ export function BindingsTable({
                             disabled={isRowBusy}
                             onClick={() => onVerifyOTP(binding.id)}
                           >
-                            <ShieldCheck className="mr-2 h-4 w-4 text-primary" />
+                            <ShieldCheck className="mr-2 h-4 w-4 text-green-600" />
                             Verify OTP
                           </DropdownMenuItem>
                         )}
@@ -183,7 +189,7 @@ export function BindingsTable({
                             disabled={isRowBusy}
                             onClick={() => onSetBalance(binding.id)}
                           >
-                            <Wallet className="mr-2 h-4 w-4 text-green-600" />
+                            <Wallet className="mr-2 h-4 w-4 text-emerald-600" />
                             Update Balance
                           </DropdownMenuItem>
                         )}
@@ -191,7 +197,7 @@ export function BindingsTable({
                         <DropdownMenuItem
                           disabled={isRowBusy}
                           onClick={() => onRelease(binding.id)}
-                          className="text-destructive"
+                          className="text-destructive focus:text-destructive"
                         >
                           <LogOut className="mr-2 h-4 w-4" />
                           Unbind Akun

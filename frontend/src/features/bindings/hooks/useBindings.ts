@@ -129,7 +129,7 @@ export function useBindings() {
   function clearRowAction(bindingId: number): void {
     setPendingRowActions((previous) => {
       const next = { ...previous };
-      delete next[orderId];
+      delete next[bindingId];
       return next;
     });
   }

@@ -1,8 +1,11 @@
 export type Binding = {
   id: number;
   order_id: number;
+  order_name: string | null;
   server_id: number;
+  server_name: string | null;
   account_id: number;
+  account_msisdn: string | null;
   step: "BINDED" | "REQUEST_OTP" | "VERIFY_OTP" | "VERIFIED" | "CHECK_BALANCE" | "COMPLETED" | "LOGGED_OUT";
   is_reseller: boolean;
   token_location: string | null;

@@ -34,6 +34,7 @@ import {
   BalanceDialogFields,
   BindAccountFormFields,
   BulkBindFormFields,
+  EditBindingFormFields,
   OTPDialogFields,
 } from "../components/BindingForms";
 import { BindingsTable } from "../components/BindingsTable";
@@ -179,6 +180,7 @@ export function BindingsPage() {
             bindings={vm.bindings}
             isLoadingBindings={vm.isLoadingBindings}
             pendingRowActions={vm.pendingRowActions}
+            onEdit={vm.openEditDialog}
             onRequestOTP={(id) => handleOpenOTP(id, "request")}
             onVerifyOTP={(id) => handleOpenOTP(id, "verify")}
             onSetBalance={(id) => handleOpenBalance(id)}
@@ -186,6 +188,31 @@ export function BindingsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Edit Binding Dialog */}
+      <Dialog open={vm.isEditDialogOpen} onOpenChange={vm.setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Binding</DialogTitle>
+            <DialogDescription>
+              Ubah konfigurasi server atau prioritas antrean.
+            </DialogDescription>
+          </DialogHeader>
+          <EditBindingFormFields
+            form={vm.editForm}
+            onChange={vm.setEditForm}
+            servers={vm.servers}
+          />
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => vm.setIsEditDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={() => void vm.updateBinding()} disabled={vm.isSubmitting}>
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* OTP Dialog */}
       <Dialog open={vm.isOTPDialogOpen} onOpenChange={vm.setIsOTPDialogOpen}>
@@ -266,9 +293,9 @@ export function BindingsPage() {
       <AlertDialog open={vm.isReleaseConfirmOpen} onOpenChange={vm.setIsReleaseConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Release Sesi Binding?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus / Unbind Akun?</AlertDialogTitle>
             <AlertDialogDescription>
-              Aksi ini akan mengeluarkan akun dari sesi aktif server. Akun akan tersedia kembali untuk sesi lain.
+              Aksi ini akan menghapus data binding secara permanen. Akun akan bebas dan dapat dihubungkan ke server lain.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -282,7 +309,7 @@ export function BindingsPage() {
               disabled={vm.isSubmitting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Release Sesi
+              Ya, Unbind
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
